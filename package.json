@@ -1,0 +1,17 @@
+{
+  "name": "read-later-is-broken",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chrome extension scaffold for Read Later Is Broken.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.326",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12"
+  }
+}

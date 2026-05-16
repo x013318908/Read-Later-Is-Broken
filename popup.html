@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Read Later Is Broken</title>
+  </head>
+  <body>
+    <main id="app" class="popup-shell">
+      <section class="hero">
+        <p class="product">Read Later Is Broken</p>
+        <h1>「あとで読む」は読まれない。</h1>
+        <p class="copy">まず聴き、つぎに問う。</p>
+      </section>
+
+      <section class="source-panel" aria-labelledby="source-heading">
+        <div class="section-header">
+          <h2 id="source-heading">現在のページ</h2>
+          <span id="source-status" class="status-pill">取得中</span>
+        </div>
+        <p id="page-title" class="page-title">Loading current tab...</p>
+        <p id="page-url" class="page-url"></p>
+      </section>
+
+      <form id="send-form" class="send-form">
+        <fieldset>
+          <legend>保存先</legend>
+
+          <label class="choice-row">
+            <input type="radio" name="mode" value="existing" checked />
+            <span>
+              <strong>登録済みノートブック</strong>
+              <small>手動登録した NotebookLM URL を開きます</small>
+            </span>
+          </label>
+
+          <select id="destination-select" aria-label="登録済みノートブック"></select>
+
+          <label class="choice-row">
+            <input type="radio" name="mode" value="new" />
+            <span>
+              <strong>新しいノートブック</strong>
+              <small>NotebookLM を開き、ユーザー操作で作成します</small>
+            </span>
+          </label>
+
+          <input id="new-title" type="text" aria-label="新規ノートブック名のメモ" placeholder="ページタイトル" />
+        </fieldset>
+
+        <p class="note">Deep Dive は自動生成しません。URL をコピーして、NotebookLM を開くところまでを補助します。</p>
+
+        <button id="send-button" type="submit">NotebookLM を開く</button>
+        <button id="options-button" type="button" class="secondary-button">保存先を管理</button>
+      </form>
+
+      <p id="message" class="message" role="status"></p>
+
+      <footer>
+        Independent helper. Not affiliated with Google or NotebookLM.
+      </footer>
+    </main>
+    <script type="module" src="/src/popup/main.ts"></script>
+  </body>
+</html>
