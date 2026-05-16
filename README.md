@@ -31,10 +31,6 @@ npm run dev
 - 既存ノートブックは options 画面で手動登録します。
 - ノートブック一覧の自動取得、ノートブック自動作成、Deep Dive 自動生成は行いません。
 
-## Reference
-
-`.ref/` には既存拡張の参考ファイルを置けます。このプロジェクトでは、権限や画面構成の比較材料としてだけ扱い、配布物や Git 管理対象には含めません。
-
 ## Files
 
 - `public/manifest.json`: Chrome Manifest V3
