@@ -1,7 +1,7 @@
 import "../styles/app.css";
 import { NOTEBOOKLM_HOME_URL } from "../shared/notebooklm";
 import { loadSettings, rememberLastDestination } from "../shared/storage";
-import type { AppSettings, CurrentPage, Destination } from "../shared/types";
+import type { AppSettings, CurrentPage, Destination, NotebookDirectAddResult } from "../shared/types";
 
 const state: {
   settings: AppSettings;
@@ -36,6 +36,10 @@ async function initialize(): Promise<void> {
     chrome.runtime.openOptionsPage();
   });
 
+  document.querySelectorAll<HTMLInputElement>("input[name='mode']").forEach((input) => {
+    input.addEventListener("change", updateSendButtonLabel);
+  });
+
   try {
     const [settings, currentPage] = await Promise.all([loadSettings(), getCurrentPage()]);
     state.settings = settings;
@@ -67,17 +71,36 @@ async function handleSubmit(): Promise<void> {
   }
 
   elements.sendButton.disabled = true;
-  showMessage("URL をコピーしています...", "neutral");
 
   try {
-    await copyToClipboard(state.currentPage.url);
-
     if (destination) {
       await rememberLastDestination(destination.id);
+      showMessage("NotebookLM を開いてURL追加を試します...", "neutral");
+      const response = await chrome.runtime.sendMessage({
+        type: "addSourceToNotebook",
+        payload: {
+          notebookUrl: destination.notebookUrl,
+          source: state.currentPage
+        }
+      });
+
+      if (!isInjectionResponse(response)) {
+        throw new Error("URL追加の結果を取得できませんでした。");
+      }
+
+      if (!response.ok) {
+        throw new Error(response.error);
+      }
+
+      showMessage(response.result.message, response.result.ok ? "success" : "danger");
+      return;
     }
 
+    showMessage("URL をコピーしています...", "neutral");
+    await copyToClipboard(state.currentPage.url);
+
     await chrome.tabs.create({
-      url: destination?.notebookUrl ?? NOTEBOOKLM_HOME_URL,
+      url: NOTEBOOKLM_HOME_URL,
       active: true
     });
 
@@ -120,6 +143,7 @@ function renderDestinations(settings: AppSettings): void {
     elements.destinationSelect.append(option);
     elements.destinationSelect.disabled = true;
     selectMode("new");
+    updateSendButtonLabel();
     return;
   }
 
@@ -134,6 +158,8 @@ function renderDestinations(settings: AppSettings): void {
       (!settings.lastDestinationId && destination === settings.destinations[0]);
     elements.destinationSelect.append(option);
   }
+
+  updateSendButtonLabel();
 }
 
 function getSelectedMode(): "existing" | "new" {
@@ -150,6 +176,10 @@ function selectMode(mode: "existing" | "new"): void {
 
 function getSelectedDestination(): Destination | undefined {
   return state.settings.destinations.find((destination) => destination.id === elements.destinationSelect.value);
+}
+
+function updateSendButtonLabel(): void {
+  elements.sendButton.textContent = getSelectedMode() === "existing" ? "NotebookLM に追加" : "NotebookLM を開く";
 }
 
 async function copyToClipboard(value: string): Promise<void> {
@@ -184,4 +214,20 @@ function getElement<T extends HTMLElement>(id: string): T {
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "予期しないエラーが発生しました。";
+}
+
+function isInjectionResponse(value: unknown): value is
+  | { ok: true; result: NotebookDirectAddResult }
+  | { ok: false; error: string } {
+  if (!isRecord(value) || typeof value.ok !== "boolean") {
+    return false;
+  }
+
+  return value.ok
+    ? isRecord(value.result) && typeof value.result.message === "string" && typeof value.result.ok === "boolean"
+    : typeof value.error === "string";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

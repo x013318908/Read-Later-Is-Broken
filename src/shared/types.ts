@@ -15,3 +15,27 @@ export interface CurrentPage {
   title: string;
   url: string;
 }
+
+export interface NotebookDirectAddRequest {
+  notebookUrl: string;
+  source: CurrentPage;
+}
+
+export interface NotebookDirectAddResult {
+  ok: boolean;
+  notebookUrl: string;
+  notebookId?: string;
+  source: CurrentPage;
+  tokens: {
+    at: boolean;
+    bl: boolean;
+  };
+  rpc: {
+    attempted: boolean;
+    ok: boolean;
+    status?: number;
+    responseReceived?: boolean;
+  };
+  message: string;
+  checkedAt: string;
+}
