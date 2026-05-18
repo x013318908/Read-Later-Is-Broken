@@ -27,7 +27,10 @@
       </form>
 
       <section aria-labelledby="saved-heading" class="saved-section">
-        <h2 id="saved-heading">登録済み</h2>
+        <div class="section-header">
+          <h2 id="saved-heading">登録済み</h2>
+          <button id="sync-notebooks-button" type="button" class="secondary-button small">NotebookLMから読み込む</button>
+        </div>
         <div id="empty-state" class="empty-state">まだ保存先がありません。</div>
         <ul id="destination-list" class="destination-list"></ul>
       </section>

@@ -32,6 +32,24 @@ export interface NotebookDirectAddBatchRequest {
   targets: NotebookDirectAddTarget[];
 }
 
+export interface NotebookListRequest {
+  authuser?: string;
+}
+
+export interface NotebookListResult {
+  ok: boolean;
+  notebooks: NotebookListItem[];
+  message: string;
+  checkedAt: string;
+}
+
+export interface NotebookListItem {
+  notebookId: string;
+  title: string;
+  emoji?: string;
+  notebookUrl: string;
+}
+
 export interface NotebookDirectAddResult {
   ok: boolean;
   notebookUrl: string;

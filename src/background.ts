@@ -6,7 +6,10 @@ import type {
   NotebookDirectAddRequest,
   NotebookDirectAddResponseKind,
   NotebookDirectAddResult,
-  NotebookDirectAddTarget
+  NotebookDirectAddTarget,
+  NotebookListItem,
+  NotebookListRequest,
+  NotebookListResult
 } from "./shared/types";
 
 const MAX_PARALLEL_NOTEBOOK_ADDS = 3;
@@ -28,6 +31,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (isNotebookDirectAddBatchMessage(message)) {
     void handleNotebookDirectAddBatch(message.payload)
+      .then((result) => sendResponse({ ok: true, result }))
+      .catch((error: unknown) => sendResponse({ ok: false, error: getErrorMessage(error) }));
+
+    return true;
+  }
+
+  if (isNotebookListMessage(message)) {
+    void handleNotebookList(message.payload)
       .then((result) => sendResponse({ ok: true, result }))
       .catch((error: unknown) => sendResponse({ ok: false, error: getErrorMessage(error) }));
 
@@ -57,6 +68,193 @@ async function handleNotebookDirectAddBatch(request: NotebookDirectAddBatchReque
     message: `NotebookLMへの追加を実行しました（${attemptedCount}件）。NotebookLM側でソース一覧を確認してください。Deep Diveは生成していません。`,
     checkedAt
   };
+}
+
+async function handleNotebookList(request: NotebookListRequest): Promise<NotebookListResult> {
+  const authParams = await loadNotebookLmAuthParams(request.authuser);
+  const [response] = await executeNotebookLmRpcs(authParams, [{ id: "wXbhsf", args: [null, 1] }]);
+  const notebooks = parseNotebookListResponse(response, request.authuser);
+  const checkedAt = new Date().toISOString();
+
+  return {
+    ok: true,
+    notebooks,
+    message: `NotebookLMから${notebooks.length}件のノートブックを読み込みました。`,
+    checkedAt
+  };
+}
+
+interface NotebookLmAuthParams {
+  authuser?: string;
+  at: string;
+  bl: string;
+}
+
+interface NotebookLmRpcRequest {
+  id: string;
+  args: unknown[];
+}
+
+interface NotebookLmRpcResponse {
+  index: number;
+  rpcId: string;
+  data: unknown;
+}
+
+async function loadNotebookLmAuthParams(authuser?: string): Promise<NotebookLmAuthParams> {
+  const url = new URL("https://notebooklm.google.com/");
+
+  if (authuser) {
+    url.searchParams.set("authuser", authuser);
+  }
+
+  const response = await fetch(url.toString(), {
+    credentials: "include"
+  });
+  const html = await response.text();
+  const at = extractNotebookLmToken(html, "SNlM0e");
+  const bl = extractNotebookLmToken(html, "cfb2h");
+
+  if (!response.ok || !at || !bl) {
+    throw new Error("NotebookLMにログインしているか確認してください。");
+  }
+
+  return { authuser, at, bl };
+}
+
+async function executeNotebookLmRpcs(
+  authParams: NotebookLmAuthParams,
+  rpcs: NotebookLmRpcRequest[]
+): Promise<NotebookLmRpcResponse[]> {
+  const url = new URL("https://notebooklm.google.com/_/LabsTailwindUi/data/batchexecute");
+  url.searchParams.set("rpcids", rpcs.map((rpc) => rpc.id).join(","));
+  url.searchParams.set("_reqid", Math.floor(Math.random() * 900000 + 100000).toString());
+  url.searchParams.set("bl", authParams.bl);
+
+  if (authParams.authuser) {
+    url.searchParams.set("authuser", authParams.authuser);
+  }
+
+  const body = new URLSearchParams({
+    "f.req": JSON.stringify([buildNotebookLmRpcRows(rpcs)]),
+    at: authParams.at
+  });
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded;charset=utf-8"
+    },
+    body,
+    credentials: "include"
+  });
+  const responseText = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`NotebookLM RPCが失敗しました: HTTP ${response.status}`);
+  }
+
+  return parseNotebookLmRpcResponses(responseText);
+}
+
+function buildNotebookLmRpcRows(rpcs: NotebookLmRpcRequest[]): unknown[][] {
+  if (rpcs.length === 1) {
+    return [[rpcs[0].id, JSON.stringify(rpcs[0].args), null, "generic"]];
+  }
+
+  return rpcs.map((rpc, index) => [rpc.id, JSON.stringify(rpc.args), null, (index + 1).toString()]);
+}
+
+function parseNotebookLmRpcResponses(responseText: string): NotebookLmRpcResponse[] {
+  const payload = extractNotebookLmRpcPayload(responseText);
+
+  if (!payload) {
+    throw new Error("NotebookLM RPCの応答が空でした。");
+  }
+
+  const rows = JSON.parse(payload) as unknown;
+
+  if (!Array.isArray(rows)) {
+    throw new Error("NotebookLM RPCの応答形式が想定と違います。");
+  }
+
+  return rows.flatMap((row) => parseNotebookLmRpcResponseRow(row));
+}
+
+function parseNotebookLmRpcResponseRow(row: unknown): NotebookLmRpcResponse[] {
+  if (!Array.isArray(row) || row[0] !== "wrb.fr" || typeof row[1] !== "string" || typeof row[2] !== "string") {
+    return [];
+  }
+
+  const rawIndex = row[6];
+  const index = rawIndex === "generic" ? 1 : Number.parseInt(String(rawIndex), 10);
+
+  return [
+    {
+      index: Number.isFinite(index) ? index : 1,
+      rpcId: row[1],
+      data: JSON.parse(row[2]) as unknown
+    }
+  ];
+}
+
+function parseNotebookListResponse(response: NotebookLmRpcResponse | undefined, authuser?: string): NotebookListItem[] {
+  if (!response || response.rpcId !== "wXbhsf" || !Array.isArray(response.data)) {
+    throw new Error("NotebookLMのノートブック一覧を読み込めませんでした。");
+  }
+
+  const rows = response.data[0];
+
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+
+  return rows.flatMap((row) => parseNotebookListItem(row, authuser));
+}
+
+function parseNotebookListItem(row: unknown, authuser?: string): NotebookListItem[] {
+  if (!Array.isArray(row) || typeof row[2] !== "string") {
+    return [];
+  }
+
+  const title = typeof row[0] === "string" && row[0].trim() ? row[0].trim() : "Untitled";
+  const emoji = typeof row[3] === "string" && row[3].trim() ? row[3].trim() : undefined;
+
+  return [
+    {
+      notebookId: row[2],
+      title,
+      emoji,
+      notebookUrl: buildNotebookUrl(row[2], authuser)
+    }
+  ];
+}
+
+function buildNotebookUrl(notebookId: string, authuser?: string): string {
+  const url = new URL(`https://notebooklm.google.com/notebook/${notebookId}`);
+
+  if (authuser) {
+    url.searchParams.set("authuser", authuser);
+  }
+
+  return url.toString();
+}
+
+function extractNotebookLmToken(html: string, name: string): string | undefined {
+  return new RegExp(`"${name}":"([^"]+)"`).exec(html)?.[1];
+}
+
+function extractNotebookLmRpcPayload(responseText: string): string {
+  const text = responseText.trim();
+
+  if (!text) {
+    return "";
+  }
+
+  if (!text.startsWith(")]}'")) {
+    return text;
+  }
+
+  return text.split("\n").slice(1).join("\n").trim();
 }
 
 async function addSourceToNotebookTargetSilently(target: NotebookDirectAddTarget, source: CurrentPage): Promise<void> {
@@ -501,6 +699,18 @@ function isNotebookDirectAddBatchMessage(value: unknown): value is {
     Array.isArray(value.payload.targets) &&
     value.payload.targets.length > 0 &&
     value.payload.targets.every(isNotebookDirectAddTarget)
+  );
+}
+
+function isNotebookListMessage(value: unknown): value is {
+  type: "listNotebookLmNotebooks";
+  payload: NotebookListRequest;
+} {
+  return (
+    isRecord(value) &&
+    value.type === "listNotebookLmNotebooks" &&
+    isRecord(value.payload) &&
+    (value.payload.authuser === undefined || typeof value.payload.authuser === "string")
   );
 }
 

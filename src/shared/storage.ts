@@ -54,6 +54,45 @@ export async function upsertDestination(input: Pick<Destination, "name" | "noteb
   return nextSettings;
 }
 
+export async function addMissingDestinations(
+  inputs: Array<Pick<Destination, "name" | "notebookUrl">>
+): Promise<{ settings: AppSettings; addedCount: number; skippedCount: number }> {
+  const settings = await loadSettings();
+  const now = new Date().toISOString();
+  const existingUrls = new Set(settings.destinations.map((destination) => destination.notebookUrl));
+  const pendingUrls = new Set<string>();
+  const additions: Destination[] = [];
+  let skippedCount = 0;
+
+  for (const input of inputs) {
+    if (existingUrls.has(input.notebookUrl) || pendingUrls.has(input.notebookUrl)) {
+      skippedCount += 1;
+      continue;
+    }
+
+    pendingUrls.add(input.notebookUrl);
+    additions.push({
+      id: crypto.randomUUID(),
+      name: input.name,
+      notebookUrl: input.notebookUrl,
+      createdAt: now,
+      updatedAt: now
+    });
+  }
+
+  const nextSettings = {
+    ...settings,
+    destinations: sortDestinations([...additions, ...settings.destinations])
+  };
+
+  await saveSettings(nextSettings);
+  return {
+    settings: nextSettings,
+    addedCount: additions.length,
+    skippedCount
+  };
+}
+
 export async function removeDestination(id: string): Promise<AppSettings> {
   const settings = await loadSettings();
   const nextSettings = {
