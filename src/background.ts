@@ -1,4 +1,10 @@
-import type { CurrentPage, NotebookDirectAddRequest, NotebookDirectAddResult } from "./shared/types";
+import type {
+  CurrentPage,
+  NotebookDirectAddFailure,
+  NotebookDirectAddRequest,
+  NotebookDirectAddResponseKind,
+  NotebookDirectAddResult
+} from "./shared/types";
 
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === "install") {
@@ -69,6 +75,12 @@ async function addSourceToNotebookPage(input: {
   const checkedAt = new Date().toISOString();
 
   if (!at || !bl) {
+    const failure: NotebookDirectAddFailure = {
+      code: "token-missing",
+      title: "NotebookLMのログイン状態を確認できませんでした。",
+      action: "NotebookLMでログイン済みか、ページの読み込みが完了しているか確認してください。",
+      diagnostic: `missing tokens: at=${Boolean(at)}, bl=${Boolean(bl)}`
+    };
     const result: NotebookDirectAddResult = {
       ok: false,
       notebookUrl: input.notebookUrl,
@@ -80,10 +92,11 @@ async function addSourceToNotebookPage(input: {
       },
       rpc: {
         attempted: false,
-        ok: false
+        ok: false,
+        responseKind: "not-attempted"
       },
-      message:
-        "URL追加NG: NotebookLMページ内で必要トークンを検出できませんでした。ログイン状態またはページ読み込みを確認してください。",
+      failure,
+      message: `URL追加NG: ${failure.title} ${failure.action}`,
       checkedAt
     };
 
@@ -112,6 +125,8 @@ async function addSourceToNotebookPage(input: {
   let responseStatus: number | undefined;
   let responseReceived = false;
   let rpcOk = false;
+  let responseKind: NotebookDirectAddResponseKind = "empty-response";
+  let requestError: string | undefined;
 
   try {
     const response = await fetch(rpcUrl.toString(), {
@@ -125,11 +140,25 @@ async function addSourceToNotebookPage(input: {
     responseStatus = response.status;
 
     const responseText = await response.text();
-    responseReceived = hasSuccessfulAddSourceResponse(responseText);
+    responseKind = analyzeAddSourceResponse(responseText);
+    responseReceived = responseKind === "success";
     rpcOk = response.ok && responseReceived;
-  } catch {
+  } catch (error) {
+    responseKind = "request-error";
+    requestError = error instanceof Error ? error.message : "request failed";
     rpcOk = false;
   }
+
+  const failure = rpcOk
+    ? undefined
+    : getDirectAddFailure({
+        status: responseStatus,
+        responseKind,
+        requestError
+      });
+  const message = failure
+    ? `URL追加NG: ${failure.title} ${failure.action}`
+    : "URL追加OK: NotebookLMにソース追加RPCを送信しました。Deep Diveは生成していません。";
 
   const result: NotebookDirectAddResult = {
     ok: rpcOk,
@@ -144,45 +173,145 @@ async function addSourceToNotebookPage(input: {
       attempted: true,
       ok: rpcOk,
       status: responseStatus,
-      responseReceived
+      responseReceived,
+      responseKind,
+      error: requestError
     },
-    message: rpcOk
-      ? "URL追加OK: NotebookLMにソース追加RPCを送信しました。Deep Diveは生成していません。"
-      : "URL追加NG: NotebookLMへのソース追加RPCが成功しませんでした。",
+    failure,
+    message,
     checkedAt
   };
 
   renderDirectAddStatus(result);
   return result;
 
-  function hasSuccessfulAddSourceResponse(responseText: string): boolean {
+  function analyzeAddSourceResponse(responseText: string): NotebookDirectAddResponseKind {
     try {
-      const payload = responseText.split("\n").slice(2).join("");
+      const payload = extractRpcPayload(responseText);
 
       if (!payload) {
-        return false;
+        return "empty-response";
       }
 
       const rows = JSON.parse(payload) as unknown;
 
       if (!Array.isArray(rows)) {
-        return false;
+        return "parse-error";
       }
 
-      return rows.some((row) => {
-        if (!Array.isArray(row) || row[0] !== "wrb.fr" || row[1] !== "izAoDd" || typeof row[2] !== "string") {
-          return false;
-        }
-
-        try {
-          return JSON.parse(row[2]) !== null;
-        } catch {
-          return false;
-        }
+      const sourceAddRow = rows.find((row) => {
+        return Array.isArray(row) && row[0] === "wrb.fr" && row[1] === "izAoDd";
       });
+
+      if (!Array.isArray(sourceAddRow) || typeof sourceAddRow[2] !== "string") {
+        return "rpc-row-missing";
+      }
+
+      try {
+        const data = JSON.parse(sourceAddRow[2]) as unknown;
+        return data ? "success" : "rpc-data-empty";
+      } catch {
+        return "rpc-data-invalid";
+      }
     } catch {
-      return false;
+      return "parse-error";
     }
+  }
+
+  function extractRpcPayload(responseText: string): string {
+    const text = responseText.trim();
+
+    if (!text) {
+      return "";
+    }
+
+    if (!text.startsWith(")]}'")) {
+      return text;
+    }
+
+    return text.split("\n").slice(1).join("\n").trim();
+  }
+
+  function getDirectAddFailure(input: {
+    status?: number;
+    responseKind: NotebookDirectAddResponseKind;
+    requestError?: string;
+  }): NotebookDirectAddFailure {
+    if (input.responseKind === "request-error") {
+      return {
+        code: "request-error",
+        title: "NotebookLMへの通信に失敗しました。",
+        action: "ネットワーク状態を確認して、もう一度試してください。",
+        diagnostic: input.requestError ?? "fetch failed"
+      };
+    }
+
+    if (input.status === 401 || input.status === 403) {
+      return {
+        code: "login-or-permission",
+        title: "NotebookLMにログインしていないか、このノートブックにアクセスできません。",
+        action: "NotebookLMタブでログイン状態と、登録したノートブックURLのGoogleアカウントを確認してください。",
+        diagnostic: `http ${input.status}`
+      };
+    }
+
+    if (input.status === 429) {
+      return {
+        code: "rate-limited",
+        title: "NotebookLM側で連続追加が制限された可能性があります。",
+        action: "少し時間を置いてから、もう一度試してください。",
+        diagnostic: "http 429"
+      };
+    }
+
+    if (typeof input.status === "number" && input.status >= 500) {
+      return {
+        code: "server-error",
+        title: "NotebookLM側で一時的なエラーが起きた可能性があります。",
+        action: "NotebookLMタブを再読み込みするか、時間を置いて再試行してください。",
+        diagnostic: `http ${input.status}`
+      };
+    }
+
+    if (input.responseKind === "rpc-data-empty") {
+      return {
+        code: "source-rejected",
+        title: "NotebookLMは応答しましたが、ソース追加結果が空でした。",
+        action: "ノートブックのソース上限、保護されたページ、または非対応URLの可能性があります。",
+        diagnostic: `${input.responseKind}, http ${input.status ?? "n/a"}`
+      };
+    }
+
+    if (
+      input.responseKind === "parse-error" ||
+      input.responseKind === "rpc-row-missing" ||
+      input.responseKind === "rpc-data-invalid"
+    ) {
+      return {
+        code: "notebooklm-response-changed",
+        title: "NotebookLMの内部応答形式が想定と違います。",
+        action: "NotebookLM側の仕様変更の可能性があります。拡張機能側の更新が必要です。",
+        diagnostic: `${input.responseKind}, http ${input.status ?? "n/a"}`
+      };
+    }
+
+    return {
+      code: "unknown",
+      title: "NotebookLMへのソース追加RPCが成功しませんでした。",
+      action: "NotebookLMタブでソース一覧を確認してから、必要なら再試行してください。",
+      diagnostic: `${input.responseKind}, http ${input.status ?? "n/a"}`
+    };
+  }
+
+  function appendFailureAction(status: HTMLDivElement, result: NotebookDirectAddResult): void {
+    if (!result.failure?.action) {
+      return;
+    }
+
+    const action = document.createElement("div");
+    action.textContent = result.failure.action;
+    action.style.marginTop = "4px";
+    status.append(action);
   }
 
   function renderDirectAddStatus(result: NotebookDirectAddResult): void {
@@ -212,17 +341,19 @@ async function addSourceToNotebookPage(input: {
     title.style.marginBottom = "6px";
 
     const body = document.createElement("div");
-    body.textContent = result.message;
+    body.textContent = result.ok ? result.message : result.failure?.title ?? result.message;
 
     const meta = document.createElement("div");
-    meta.textContent = `status=${result.rpc.status ?? "n/a"} / response=${
-      result.rpc.responseReceived ? "received" : "missing"
-    }`;
+    meta.textContent = `reason=${result.failure?.code ?? "none"} / status=${
+      result.rpc.status ?? "n/a"
+    } / response=${result.rpc.responseReceived ? "received" : result.rpc.responseKind ?? "missing"}`;
     meta.style.marginTop = "6px";
     meta.style.color = "#665f55";
     meta.style.fontSize = "12px";
 
-    status.append(title, body, meta);
+    status.append(title, body);
+    appendFailureAction(status, result);
+    status.append(meta);
     document.body.append(status);
   }
 }
