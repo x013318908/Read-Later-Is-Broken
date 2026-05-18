@@ -40,6 +40,8 @@ npm run dev
 - 新規ノートブックでは NotebookLM にノートブックを作成し、現在ページの URL をソースとして追加します。タイトル欄が空の場合は空のまま NotebookLM に渡します。
 - 命名テンプレート編集、URLパターンマッチング、複数タブ一括追加は行いません。
 
+今後の候補や外した計画は `docs/roadmap.md` に残しています。
+
 ## Files
 
 - `public/manifest.json`: Chrome Manifest V3

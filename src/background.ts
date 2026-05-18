@@ -516,9 +516,9 @@ function getNewNotebookDisplayName(title: string): string {
 function getDateNotebookEmoji(period: DateNotebookPeriod): string {
   switch (period) {
     case "daily":
-      return "📔";
-    case "weekly":
       return "📅";
+    case "weekly":
+      return "📆";
     case "monthly":
       return "🗓️";
   }
