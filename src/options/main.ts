@@ -6,7 +6,7 @@ import {
   removeDestination,
   upsertDestination
 } from "../shared/storage";
-import type { AppSettings, NotebookDirectAddResult } from "../shared/types";
+import type { AppSettings, NotebookDirectAddStoredResult } from "../shared/types";
 
 const elements = {
   form: getElement<HTMLFormElement>("destination-form"),
@@ -20,7 +20,7 @@ const elements = {
   copyDiagnosticButton: getElement<HTMLButtonElement>("copy-diagnostic-button")
 };
 
-let lastDirectAddResult: NotebookDirectAddResult | undefined;
+let lastDirectAddResult: NotebookDirectAddStoredResult | undefined;
 
 document.addEventListener("DOMContentLoaded", () => {
   void initialize();
@@ -102,12 +102,17 @@ function renderSettings(settings: AppSettings): void {
   }
 }
 
-function renderDiagnostic(result: NotebookDirectAddResult | undefined): void {
+function renderDiagnostic(result: NotebookDirectAddStoredResult | undefined): void {
   elements.diagnosticList.replaceChildren();
   elements.diagnosticEmpty.hidden = Boolean(result);
   elements.copyDiagnosticButton.hidden = !result;
 
   if (!result) {
+    return;
+  }
+
+  if (isBatchResult(result)) {
+    renderBatchDiagnostic(result);
     return;
   }
 
@@ -127,6 +132,23 @@ function renderDiagnostic(result: NotebookDirectAddResult | undefined): void {
     appendDiagnosticRow("対処", result.failure.action);
     appendDiagnosticRow("診断", result.failure.diagnostic);
   }
+}
+
+function renderBatchDiagnostic(result: Extract<NotebookDirectAddStoredResult, { items: unknown[] }>): void {
+  appendDiagnosticRow("結果", result.ok ? "成功" : "一部失敗");
+  appendDiagnosticRow("内訳", `成功${result.successCount}件 / 失敗${result.failureCount}件`);
+  appendDiagnosticRow("確認時刻", formatDateTime(result.checkedAt));
+  appendDiagnosticRow("ソース", result.source.title);
+  appendDiagnosticRow("URL", result.source.url);
+
+  result.items.forEach((item, index) => {
+    const status = item.result.ok ? "成功" : `失敗: ${item.result.failure?.code ?? "unknown"}`;
+    appendDiagnosticRow(`保存先${index + 1}`, `${item.target.name} / ${status}`);
+
+    if (!item.result.ok && item.result.failure) {
+      appendDiagnosticRow(`対処${index + 1}`, item.result.failure.action);
+    }
+  });
 }
 
 function appendDiagnosticRow(label: string, value: string): void {
@@ -160,6 +182,12 @@ function formatDateTime(value: string): string {
   }
 
   return date.toLocaleString();
+}
+
+function isBatchResult(
+  result: NotebookDirectAddStoredResult
+): result is Extract<NotebookDirectAddStoredResult, { items: unknown[] }> {
+  return "items" in result;
 }
 
 function showMessage(message: string, variant: "success" | "danger"): void {

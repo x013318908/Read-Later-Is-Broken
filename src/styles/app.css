@@ -199,6 +199,57 @@ legend {
   line-height: 1.45;
 }
 
+.destination-checklist {
+  display: grid;
+  gap: 8px;
+  max-height: 150px;
+  overflow: auto;
+  border: 1px solid rgba(39, 35, 30, 0.16);
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.destination-check-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  min-width: 0;
+}
+
+.destination-check-row input {
+  width: 16px;
+  min-height: 16px;
+  margin-top: 4px;
+  accent-color: #2c5b50;
+}
+
+.destination-check-row strong,
+.destination-check-row small {
+  display: block;
+}
+
+.destination-check-row strong {
+  margin-bottom: 2px;
+  color: #25221e;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.destination-check-row small {
+  overflow-wrap: anywhere;
+  color: #6d655b;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.destination-check-empty {
+  color: #6d655b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 input,
 select {
   width: 100%;

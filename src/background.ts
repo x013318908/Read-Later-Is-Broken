@@ -1,9 +1,12 @@
 import type {
   CurrentPage,
   NotebookDirectAddFailure,
+  NotebookDirectAddBatchRequest,
+  NotebookDirectAddBatchResult,
   NotebookDirectAddRequest,
   NotebookDirectAddResponseKind,
-  NotebookDirectAddResult
+  NotebookDirectAddResult,
+  NotebookDirectAddTarget
 } from "./shared/types";
 
 chrome.runtime.onInstalled.addListener((details) => {
@@ -13,54 +16,122 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (!isNotebookDirectAddMessage(message)) {
-    return false;
+  if (isNotebookDirectAddMessage(message)) {
+    void handleNotebookDirectAdd(message.payload)
+      .then((result) => sendResponse({ ok: true, result }))
+      .catch((error: unknown) => sendResponse({ ok: false, error: getErrorMessage(error) }));
+
+    return true;
   }
 
-  void handleNotebookDirectAdd(message.payload)
-    .then((result) => sendResponse({ ok: true, result }))
-    .catch((error: unknown) => sendResponse({ ok: false, error: getErrorMessage(error) }));
+  if (isNotebookDirectAddBatchMessage(message)) {
+    void handleNotebookDirectAddBatch(message.payload)
+      .then((result) => sendResponse({ ok: true, result }))
+      .catch((error: unknown) => sendResponse({ ok: false, error: getErrorMessage(error) }));
 
-  return true;
+    return true;
+  }
+
+  return false;
 });
 
 async function handleNotebookDirectAdd(request: NotebookDirectAddRequest): Promise<NotebookDirectAddResult> {
+  const result = await addSourceToNotebookTarget(request, { active: true, closeWhenDone: false });
+  await chrome.storage.local.set({ lastNotebookDirectAddResult: result });
+  return result;
+}
+
+async function handleNotebookDirectAddBatch(request: NotebookDirectAddBatchRequest): Promise<NotebookDirectAddBatchResult> {
+  const items: NotebookDirectAddBatchResult["items"] = [];
+
+  for (const target of request.targets) {
+    try {
+      const result = await addSourceToNotebookTarget(
+        {
+          notebookUrl: target.notebookUrl,
+          source: request.source
+        },
+        { active: false, closeWhenDone: true }
+      );
+      items.push({ target, result });
+    } catch (error) {
+      items.push({
+        target,
+        result: createNotebookDirectAddErrorResult({
+          notebookUrl: target.notebookUrl,
+          source: request.source,
+          error
+        })
+      });
+    }
+  }
+
+  const successCount = items.filter((item) => item.result.ok).length;
+  const failureCount = items.length - successCount;
+  const firstFailure = items.find((item) => !item.result.ok)?.result.failure;
+  const checkedAt = new Date().toISOString();
+  const result: NotebookDirectAddBatchResult = {
+    ok: failureCount === 0,
+    source: request.source,
+    items,
+    successCount,
+    failureCount,
+    message:
+      failureCount === 0
+        ? `URL追加OK: ${successCount}件のノートブックに追加しました。Deep Diveは生成していません。`
+        : `URL追加NG: 成功${successCount}件 / 失敗${failureCount}件。${firstFailure?.title ?? "一部の追加に失敗しました。"}`,
+    checkedAt
+  };
+
+  await chrome.storage.local.set({ lastNotebookDirectAddResult: result });
+  return result;
+}
+
+async function addSourceToNotebookTarget(
+  request: NotebookDirectAddRequest,
+  options: { active: boolean; closeWhenDone: boolean }
+): Promise<NotebookDirectAddResult> {
   const notebookTarget = getNotebookTarget(request.notebookUrl);
 
   if (!notebookTarget) {
     throw new Error("NotebookLM のノートブックURLを選択してください。");
   }
 
-  const tab = await chrome.tabs.create({ url: request.notebookUrl, active: true });
+  const tab = await chrome.tabs.create({ url: request.notebookUrl, active: options.active });
 
   if (!tab.id) {
     throw new Error("NotebookLM タブを開けませんでした。");
   }
 
-  await waitForTabComplete(tab.id);
+  try {
+    await waitForTabComplete(tab.id);
 
-  const [injectionResult] = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: addSourceToNotebookPage,
-    args: [
-      {
-        notebookUrl: request.notebookUrl,
-        notebookId: notebookTarget.notebookId,
-        authuser: notebookTarget.authuser,
-        source: request.source
-      }
-    ]
-  });
+    const [injectionResult] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      world: "MAIN",
+      func: addSourceToNotebookPage,
+      args: [
+        {
+          notebookUrl: request.notebookUrl,
+          notebookId: notebookTarget.notebookId,
+          authuser: notebookTarget.authuser,
+          source: request.source
+        }
+      ]
+    });
 
-  const result = injectionResult?.result;
+    const result = injectionResult?.result;
 
-  if (!isNotebookDirectAddResult(result)) {
-    throw new Error("NotebookLM タブからURL追加結果を取得できませんでした。");
+    if (!isNotebookDirectAddResult(result)) {
+      throw new Error("NotebookLM タブからURL追加結果を取得できませんでした。");
+    }
+
+    return result;
+  } finally {
+    if (options.closeWhenDone) {
+      await chrome.tabs.remove(tab.id).catch(() => undefined);
+    }
   }
-
-  await chrome.storage.local.set({ lastNotebookDirectAddResult: result });
-  return result;
 }
 
 async function addSourceToNotebookPage(input: {
@@ -358,6 +429,38 @@ async function addSourceToNotebookPage(input: {
   }
 }
 
+function createNotebookDirectAddErrorResult(input: {
+  notebookUrl: string;
+  source: CurrentPage;
+  error: unknown;
+}): NotebookDirectAddResult {
+  const failure: NotebookDirectAddFailure = {
+    code: "request-error",
+    title: "NotebookLMタブでURL追加を完了できませんでした。",
+    action: "NotebookLMのログイン状態、登録したノートブックURL、またはネットワーク状態を確認してください。",
+    diagnostic: getErrorMessage(input.error)
+  };
+
+  return {
+    ok: false,
+    notebookUrl: input.notebookUrl,
+    source: input.source,
+    tokens: {
+      at: false,
+      bl: false
+    },
+    rpc: {
+      attempted: false,
+      ok: false,
+      responseKind: "request-error",
+      error: getErrorMessage(input.error)
+    },
+    failure,
+    message: `URL追加NG: ${failure.title} ${failure.action}`,
+    checkedAt: new Date().toISOString()
+  };
+}
+
 function waitForTabComplete(tabId: number): Promise<void> {
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -426,6 +529,30 @@ function isNotebookDirectAddMessage(value: unknown): value is {
     isRecord(value.payload) &&
     typeof value.payload.notebookUrl === "string" &&
     isCurrentPage(value.payload.source)
+  );
+}
+
+function isNotebookDirectAddBatchMessage(value: unknown): value is {
+  type: "addSourcesToNotebooks";
+  payload: NotebookDirectAddBatchRequest;
+} {
+  return (
+    isRecord(value) &&
+    value.type === "addSourcesToNotebooks" &&
+    isRecord(value.payload) &&
+    isCurrentPage(value.payload.source) &&
+    Array.isArray(value.payload.targets) &&
+    value.payload.targets.length > 0 &&
+    value.payload.targets.every(isNotebookDirectAddTarget)
+  );
+}
+
+function isNotebookDirectAddTarget(value: unknown): value is NotebookDirectAddTarget {
+  return (
+    isRecord(value) &&
+    typeof value.destinationId === "string" &&
+    typeof value.name === "string" &&
+    typeof value.notebookUrl === "string"
   );
 }
 

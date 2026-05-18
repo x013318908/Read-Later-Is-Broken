@@ -8,7 +8,7 @@ export interface Destination {
 
 export interface AppSettings {
   destinations: Destination[];
-  lastDestinationId?: string;
+  selectedDestinationIds: string[];
 }
 
 export interface CurrentPage {
@@ -19,6 +19,17 @@ export interface CurrentPage {
 export interface NotebookDirectAddRequest {
   notebookUrl: string;
   source: CurrentPage;
+}
+
+export interface NotebookDirectAddTarget {
+  destinationId: string;
+  name: string;
+  notebookUrl: string;
+}
+
+export interface NotebookDirectAddBatchRequest {
+  source: CurrentPage;
+  targets: NotebookDirectAddTarget[];
 }
 
 export interface NotebookDirectAddResult {
@@ -42,6 +53,23 @@ export interface NotebookDirectAddResult {
   message: string;
   checkedAt: string;
 }
+
+export interface NotebookDirectAddBatchResult {
+  ok: boolean;
+  source: CurrentPage;
+  items: NotebookDirectAddBatchItem[];
+  successCount: number;
+  failureCount: number;
+  message: string;
+  checkedAt: string;
+}
+
+export interface NotebookDirectAddBatchItem {
+  target: NotebookDirectAddTarget;
+  result: NotebookDirectAddResult;
+}
+
+export type NotebookDirectAddStoredResult = NotebookDirectAddResult | NotebookDirectAddBatchResult;
 
 export type NotebookDirectAddResponseKind =
   | "not-attempted"

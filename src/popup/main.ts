@@ -1,13 +1,13 @@
 import "../styles/app.css";
 import { NOTEBOOKLM_HOME_URL } from "../shared/notebooklm";
-import { loadSettings, rememberLastDestination } from "../shared/storage";
-import type { AppSettings, CurrentPage, Destination, NotebookDirectAddResult } from "../shared/types";
+import { loadSettings, rememberSelectedDestinations } from "../shared/storage";
+import type { AppSettings, CurrentPage, Destination, NotebookDirectAddBatchResult } from "../shared/types";
 
 const state: {
   settings: AppSettings;
   currentPage?: CurrentPage;
 } = {
-  settings: { destinations: [] }
+  settings: { destinations: [], selectedDestinationIds: [] }
 };
 
 const elements = {
@@ -15,7 +15,7 @@ const elements = {
   pageTitle: getElement<HTMLParagraphElement>("page-title"),
   pageUrl: getElement<HTMLParagraphElement>("page-url"),
   form: getElement<HTMLFormElement>("send-form"),
-  destinationSelect: getElement<HTMLSelectElement>("destination-select"),
+  destinationList: getElement<HTMLDivElement>("destination-list"),
   newTitle: getElement<HTMLInputElement>("new-title"),
   sendButton: getElement<HTMLButtonElement>("send-button"),
   optionsButton: getElement<HTMLButtonElement>("options-button"),
@@ -62,29 +62,38 @@ async function handleSubmit(): Promise<void> {
   }
 
   const mode = getSelectedMode();
-  const destination = mode === "existing" ? getSelectedDestination() : undefined;
+  const destinations = mode === "existing" ? getSelectedDestinations() : [];
 
-  if (mode === "existing" && !destination) {
+  if (mode === "existing" && state.settings.destinations.length === 0) {
     showMessage("保存先ノートブックを登録してください。", "danger");
     chrome.runtime.openOptionsPage();
+    return;
+  }
+
+  if (mode === "existing" && destinations.length === 0) {
+    showMessage("追加先ノートブックを1つ以上選択してください。", "danger");
     return;
   }
 
   elements.sendButton.disabled = true;
 
   try {
-    if (destination) {
-      await rememberLastDestination(destination.id);
-      showMessage("NotebookLM を開いてURL追加を試します...", "neutral");
+    if (destinations.length > 0) {
+      state.settings = await rememberSelectedDestinations(destinations.map((destination) => destination.id));
+      showMessage(`NotebookLM にURLを追加しています... (${destinations.length}件)`, "neutral");
       const response = await chrome.runtime.sendMessage({
-        type: "addSourceToNotebook",
+        type: "addSourcesToNotebooks",
         payload: {
-          notebookUrl: destination.notebookUrl,
-          source: state.currentPage
+          source: state.currentPage,
+          targets: destinations.map((destination) => ({
+            destinationId: destination.id,
+            name: destination.name,
+            notebookUrl: destination.notebookUrl
+          }))
         }
       });
 
-      if (!isInjectionResponse(response)) {
+      if (!isBatchInjectionResponse(response)) {
         throw new Error("URL追加の結果を取得できませんでした。");
       }
 
@@ -93,6 +102,7 @@ async function handleSubmit(): Promise<void> {
       }
 
       showMessage(response.result.message, response.result.ok ? "success" : "danger");
+      renderDestinations(state.settings);
       return;
     }
 
@@ -134,32 +144,58 @@ function renderCurrentPage(currentPage: CurrentPage): void {
 }
 
 function renderDestinations(settings: AppSettings): void {
-  elements.destinationSelect.replaceChildren();
+  elements.destinationList.replaceChildren();
 
   if (settings.destinations.length === 0) {
-    const option = document.createElement("option");
-    option.value = "";
-    option.textContent = "保存先が未登録です";
-    elements.destinationSelect.append(option);
-    elements.destinationSelect.disabled = true;
+    const empty = document.createElement("div");
+    empty.className = "destination-check-empty";
+    empty.textContent = "保存先が未登録です";
+    elements.destinationList.append(empty);
     selectMode("new");
     updateSendButtonLabel();
     return;
   }
 
-  elements.destinationSelect.disabled = false;
+  const selectedIds = getInitialSelectedDestinationIds(settings);
 
   for (const destination of settings.destinations) {
-    const option = document.createElement("option");
-    option.value = destination.id;
-    option.textContent = destination.name;
-    option.selected =
-      destination.id === settings.lastDestinationId ||
-      (!settings.lastDestinationId && destination === settings.destinations[0]);
-    elements.destinationSelect.append(option);
+    const label = document.createElement("label");
+    label.className = "destination-check-row";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = destination.id;
+    checkbox.checked = selectedIds.includes(destination.id);
+    checkbox.addEventListener("change", () => {
+      void rememberSelectionFromForm();
+      updateSendButtonLabel();
+    });
+
+    const text = document.createElement("span");
+
+    const name = document.createElement("strong");
+    name.textContent = destination.name;
+
+    const url = document.createElement("small");
+    url.textContent = destination.notebookUrl;
+
+    text.append(name, url);
+    label.append(checkbox, text);
+    elements.destinationList.append(label);
   }
 
   updateSendButtonLabel();
+}
+
+function getInitialSelectedDestinationIds(settings: AppSettings): string[] {
+  const destinationIds = new Set(settings.destinations.map((destination) => destination.id));
+  const selectedIds = settings.selectedDestinationIds.filter((id) => destinationIds.has(id));
+
+  if (selectedIds.length > 0) {
+    return selectedIds;
+  }
+
+  return settings.destinations[0] ? [settings.destinations[0].id] : [];
 }
 
 function getSelectedMode(): "existing" | "new" {
@@ -174,12 +210,29 @@ function selectMode(mode: "existing" | "new"): void {
   }
 }
 
-function getSelectedDestination(): Destination | undefined {
-  return state.settings.destinations.find((destination) => destination.id === elements.destinationSelect.value);
+function getSelectedDestinations(): Destination[] {
+  const selectedIds = new Set(getSelectedDestinationIdsFromForm());
+  return state.settings.destinations.filter((destination) => selectedIds.has(destination.id));
 }
 
 function updateSendButtonLabel(): void {
-  elements.sendButton.textContent = getSelectedMode() === "existing" ? "NotebookLM に追加" : "NotebookLM を開く";
+  if (getSelectedMode() === "new") {
+    elements.sendButton.textContent = "NotebookLM を開く";
+    return;
+  }
+
+  const count = getSelectedDestinationIdsFromForm().length;
+  elements.sendButton.textContent = count > 0 ? `NotebookLM に追加 (${count})` : "NotebookLM に追加";
+}
+
+function getSelectedDestinationIdsFromForm(): string[] {
+  return [...elements.destinationList.querySelectorAll<HTMLInputElement>("input[type='checkbox']:checked")].map(
+    (input) => input.value
+  );
+}
+
+async function rememberSelectionFromForm(): Promise<void> {
+  state.settings = await rememberSelectedDestinations(getSelectedDestinationIdsFromForm());
 }
 
 async function copyToClipboard(value: string): Promise<void> {
@@ -216,15 +269,18 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "予期しないエラーが発生しました。";
 }
 
-function isInjectionResponse(value: unknown): value is
-  | { ok: true; result: NotebookDirectAddResult }
+function isBatchInjectionResponse(value: unknown): value is
+  | { ok: true; result: NotebookDirectAddBatchResult }
   | { ok: false; error: string } {
   if (!isRecord(value) || typeof value.ok !== "boolean") {
     return false;
   }
 
   return value.ok
-    ? isRecord(value.result) && typeof value.result.message === "string" && typeof value.result.ok === "boolean"
+    ? isRecord(value.result) &&
+        typeof value.result.message === "string" &&
+        typeof value.result.ok === "boolean" &&
+        Array.isArray(value.result.items)
     : typeof value.error === "string";
 }
 

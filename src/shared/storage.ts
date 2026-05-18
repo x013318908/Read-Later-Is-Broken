@@ -1,10 +1,11 @@
-import type { AppSettings, Destination, NotebookDirectAddResult } from "./types";
+import type { AppSettings, Destination, NotebookDirectAddStoredResult } from "./types";
 
 const STORAGE_KEY = "settings";
 const LAST_DIRECT_ADD_RESULT_KEY = "lastNotebookDirectAddResult";
 
 const DEFAULT_SETTINGS: AppSettings = {
-  destinations: []
+  destinations: [],
+  selectedDestinationIds: []
 };
 
 export function loadSettings(): Promise<AppSettings> {
@@ -59,23 +60,28 @@ export async function removeDestination(id: string): Promise<AppSettings> {
   const nextSettings = {
     ...settings,
     destinations: settings.destinations.filter((destination) => destination.id !== id),
-    lastDestinationId: settings.lastDestinationId === id ? undefined : settings.lastDestinationId
+    selectedDestinationIds: settings.selectedDestinationIds.filter((destinationId) => destinationId !== id)
   };
 
   await saveSettings(nextSettings);
   return nextSettings;
 }
 
-export async function rememberLastDestination(id: string): Promise<void> {
+export async function rememberSelectedDestinations(ids: string[]): Promise<AppSettings> {
   const settings = await loadSettings();
-  await saveSettings({ ...settings, lastDestinationId: id });
+  const destinationIds = new Set(settings.destinations.map((destination) => destination.id));
+  const selectedDestinationIds = ids.filter((id, index) => destinationIds.has(id) && ids.indexOf(id) === index);
+  const nextSettings = { ...settings, selectedDestinationIds };
+
+  await saveSettings(nextSettings);
+  return nextSettings;
 }
 
-export function loadLastNotebookDirectAddResult(): Promise<NotebookDirectAddResult | undefined> {
+export function loadLastNotebookDirectAddResult(): Promise<NotebookDirectAddStoredResult | undefined> {
   return new Promise((resolve) => {
     chrome.storage.local.get(LAST_DIRECT_ADD_RESULT_KEY, (items) => {
       const value = items[LAST_DIRECT_ADD_RESULT_KEY];
-      resolve(isNotebookDirectAddResult(value) ? value : undefined);
+      resolve(isNotebookDirectAddStoredResult(value) ? value : undefined);
     });
   });
 }
@@ -89,15 +95,20 @@ function normalizeSettings(value: unknown): AppSettings {
     ? value.destinations.filter(isDestination)
     : [];
 
-  const lastDestinationId =
-    typeof value.lastDestinationId === "string" &&
-    destinations.some((destination) => destination.id === value.lastDestinationId)
-      ? value.lastDestinationId
-      : undefined;
+  const destinationIds = new Set(destinations.map((destination) => destination.id));
+  const rawSelectedDestinationIds = value.selectedDestinationIds;
+  const selectedDestinationIds = Array.isArray(rawSelectedDestinationIds)
+    ? rawSelectedDestinationIds.filter(
+        (id, index) =>
+          typeof id === "string" &&
+          destinationIds.has(id) &&
+          rawSelectedDestinationIds.indexOf(id) === index
+      )
+    : [];
 
   return {
     destinations: sortDestinations(destinations),
-    lastDestinationId
+    selectedDestinationIds
   };
 }
 
@@ -116,7 +127,11 @@ function isDestination(value: unknown): value is Destination {
   );
 }
 
-function isNotebookDirectAddResult(value: unknown): value is NotebookDirectAddResult {
+function isNotebookDirectAddStoredResult(value: unknown): value is NotebookDirectAddStoredResult {
+  return isNotebookDirectAddResult(value) || isNotebookDirectAddBatchResult(value);
+}
+
+function isNotebookDirectAddResult(value: unknown): boolean {
   return (
     isRecord(value) &&
     typeof value.ok === "boolean" &&
@@ -131,6 +146,24 @@ function isNotebookDirectAddResult(value: unknown): value is NotebookDirectAddRe
     typeof value.message === "string" &&
     typeof value.checkedAt === "string"
   );
+}
+
+function isNotebookDirectAddBatchResult(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.ok === "boolean" &&
+    isCurrentPage(value.source) &&
+    Array.isArray(value.items) &&
+    value.items.every(isNotebookDirectAddBatchItem) &&
+    typeof value.successCount === "number" &&
+    typeof value.failureCount === "number" &&
+    typeof value.message === "string" &&
+    typeof value.checkedAt === "string"
+  );
+}
+
+function isNotebookDirectAddBatchItem(value: unknown): boolean {
+  return isRecord(value) && isRecord(value.target) && isNotebookDirectAddResult(value.result);
 }
 
 function isCurrentPage(value: unknown): boolean {
