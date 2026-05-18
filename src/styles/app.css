@@ -221,6 +221,15 @@ select:focus {
   color: #8a2b22;
 }
 
+.last-result:empty {
+  display: none;
+}
+
+.last-result {
+  border-top: 1px solid rgba(39, 35, 30, 0.12);
+  padding-top: 10px;
+}
+
 footer {
   margin-top: 16px;
   color: #756d62;

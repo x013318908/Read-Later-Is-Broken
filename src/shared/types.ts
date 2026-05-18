@@ -10,12 +10,48 @@ export interface AppSettings {
   destinations: Destination[];
   selectedDestinationIds: string[];
   dailyDestinationEnabled: boolean;
+  weeklyDestinationEnabled: boolean;
+  monthlyDestinationEnabled: boolean;
   newNotebookEnabled: boolean;
+  lastAddStatus?: LastAddStatus;
 }
 
 export interface CurrentPage {
   title: string;
   url: string;
+}
+
+export type DateNotebookPeriod = "daily" | "weekly" | "monthly";
+
+export type AddJobTargetKind = "existing" | DateNotebookPeriod | "new";
+
+export interface AddJobStatusItem {
+  kind: AddJobTargetKind;
+  name: string;
+  ok: boolean;
+  message: string;
+  notebookUrl?: string;
+}
+
+export interface LastAddStatus {
+  id: string;
+  state: "running" | "success" | "partial" | "failure";
+  source: CurrentPage;
+  startedAt: string;
+  checkedAt: string;
+  message: string;
+  items: AddJobStatusItem[];
+}
+
+export interface NotebookAddJobRequest {
+  source: CurrentPage;
+  existingTargets: NotebookDirectAddTarget[];
+  datePeriods: DateNotebookPeriod[];
+  newNotebookTitle?: string;
+}
+
+export interface NotebookAddJobResult {
+  status: LastAddStatus;
 }
 
 export interface NotebookDirectAddRequest {
@@ -51,13 +87,15 @@ export interface NotebookCreateResult {
   checkedAt: string;
 }
 
-export interface NotebookDailyAddRequest {
+export interface NotebookDateAddRequest {
+  period: DateNotebookPeriod;
   source: CurrentPage;
   authuser?: string;
 }
 
-export interface NotebookDailyAddResult {
+export interface NotebookDateAddResult {
   ok: boolean;
+  period: DateNotebookPeriod;
   notebookId: string;
   notebookUrl: string;
   title: string;

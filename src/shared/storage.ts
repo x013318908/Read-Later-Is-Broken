@@ -1,4 +1,4 @@
-import type { AppSettings, Destination } from "./types";
+import type { AddJobStatusItem, AppSettings, CurrentPage, Destination, LastAddStatus } from "./types";
 
 const STORAGE_KEY = "settings";
 
@@ -6,6 +6,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   destinations: [],
   selectedDestinationIds: [],
   dailyDestinationEnabled: false,
+  weeklyDestinationEnabled: false,
+  monthlyDestinationEnabled: false,
   newNotebookEnabled: false
 };
 
@@ -105,13 +107,29 @@ export async function rememberSelectedDestinations(ids: string[]): Promise<AppSe
 }
 
 export async function rememberPopupTargetSettings(
-  input: Pick<AppSettings, "dailyDestinationEnabled" | "newNotebookEnabled">
+  input: Pick<
+    AppSettings,
+    "dailyDestinationEnabled" | "weeklyDestinationEnabled" | "monthlyDestinationEnabled" | "newNotebookEnabled"
+  >
 ): Promise<AppSettings> {
   const settings = await loadSettings();
   const nextSettings = {
     ...settings,
     dailyDestinationEnabled: input.dailyDestinationEnabled,
+    weeklyDestinationEnabled: input.weeklyDestinationEnabled,
+    monthlyDestinationEnabled: input.monthlyDestinationEnabled,
     newNotebookEnabled: input.newNotebookEnabled
+  };
+
+  await saveSettings(nextSettings);
+  return nextSettings;
+}
+
+export async function rememberLastAddStatus(lastAddStatus: LastAddStatus): Promise<AppSettings> {
+  const settings = await loadSettings();
+  const nextSettings = {
+    ...settings,
+    lastAddStatus
   };
 
   await saveSettings(nextSettings);
@@ -142,7 +160,10 @@ function normalizeSettings(value: unknown): AppSettings {
     destinations: sortDestinations(destinations),
     selectedDestinationIds,
     dailyDestinationEnabled: value.dailyDestinationEnabled === true,
-    newNotebookEnabled: value.newNotebookEnabled === true
+    weeklyDestinationEnabled: value.weeklyDestinationEnabled === true,
+    monthlyDestinationEnabled: value.monthlyDestinationEnabled === true,
+    newNotebookEnabled: value.newNotebookEnabled === true,
+    ...(isLastAddStatus(value.lastAddStatus) ? { lastAddStatus: value.lastAddStatus } : {})
   };
 }
 
@@ -216,6 +237,43 @@ function isDestination(value: unknown): value is Destination {
     typeof value.createdAt === "string" &&
     typeof value.updatedAt === "string"
   );
+}
+
+function isLastAddStatus(value: unknown): value is LastAddStatus {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    isLastAddState(value.state) &&
+    isCurrentPage(value.source) &&
+    typeof value.startedAt === "string" &&
+    typeof value.checkedAt === "string" &&
+    typeof value.message === "string" &&
+    Array.isArray(value.items) &&
+    value.items.every(isAddJobStatusItem)
+  );
+}
+
+function isLastAddState(value: unknown): value is LastAddStatus["state"] {
+  return value === "running" || value === "success" || value === "partial" || value === "failure";
+}
+
+function isAddJobStatusItem(value: unknown): value is AddJobStatusItem {
+  return (
+    isRecord(value) &&
+    isAddJobTargetKind(value.kind) &&
+    typeof value.name === "string" &&
+    typeof value.ok === "boolean" &&
+    typeof value.message === "string" &&
+    (value.notebookUrl === undefined || typeof value.notebookUrl === "string")
+  );
+}
+
+function isAddJobTargetKind(value: unknown): value is AddJobStatusItem["kind"] {
+  return value === "existing" || value === "daily" || value === "weekly" || value === "monthly" || value === "new";
+}
+
+function isCurrentPage(value: unknown): value is CurrentPage {
+  return isRecord(value) && typeof value.title === "string" && typeof value.url === "string";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

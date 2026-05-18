@@ -3,16 +3,15 @@ import {
   loadSettings,
   rememberPopupTargetSettings,
   rememberSelectedDestinations,
-  replaceDestinations,
-  upsertDestination
+  replaceDestinations
 } from "../shared/storage";
 import type {
   AppSettings,
   CurrentPage,
+  DateNotebookPeriod,
   Destination,
-  NotebookCreateResult,
-  NotebookDailyAddResult,
-  NotebookDirectAddBatchResult,
+  LastAddStatus,
+  NotebookAddJobResult,
   NotebookListResult
 } from "../shared/types";
 
@@ -25,6 +24,8 @@ const state: {
     destinations: [],
     selectedDestinationIds: [],
     dailyDestinationEnabled: false,
+    weeklyDestinationEnabled: false,
+    monthlyDestinationEnabled: false,
     newNotebookEnabled: false
   },
   searchQuery: ""
@@ -37,10 +38,15 @@ const elements = {
   destinationList: getElement<HTMLDivElement>("destination-list"),
   dailyDestinationEnabled: getElement<HTMLInputElement>("daily-destination-enabled"),
   dailyTitle: getElement<HTMLElement>("daily-title"),
+  weeklyDestinationEnabled: getElement<HTMLInputElement>("weekly-destination-enabled"),
+  weeklyTitle: getElement<HTMLElement>("weekly-title"),
+  monthlyDestinationEnabled: getElement<HTMLInputElement>("monthly-destination-enabled"),
+  monthlyTitle: getElement<HTMLElement>("monthly-title"),
   newNotebookEnabled: getElement<HTMLInputElement>("new-notebook-enabled"),
   newTitle: getElement<HTMLInputElement>("new-title"),
   sendButton: getElement<HTMLButtonElement>("send-button"),
-  message: getElement<HTMLParagraphElement>("message")
+  message: getElement<HTMLParagraphElement>("message"),
+  lastResult: getElement<HTMLParagraphElement>("last-result")
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -48,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function initialize(): Promise<void> {
-  elements.dailyTitle.textContent = getDailyNotebookTitle();
+  applyDateNotebookTitles();
 
   elements.form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -64,7 +70,12 @@ async function initialize(): Promise<void> {
     renderDestinations(state.settings);
   });
 
-  [elements.dailyDestinationEnabled, elements.newNotebookEnabled].forEach((input) => {
+  [
+    elements.dailyDestinationEnabled,
+    elements.weeklyDestinationEnabled,
+    elements.monthlyDestinationEnabled,
+    elements.newNotebookEnabled
+  ].forEach((input) => {
     input.addEventListener("change", () => {
       void rememberTargetSettingsFromForm();
       updateControlState();
@@ -76,6 +87,7 @@ async function initialize(): Promise<void> {
     const settings = await loadSettings();
     state.settings = settings;
     renderDestinations(settings);
+    renderLastAddStatus(settings.lastAddStatus);
 
     if (settings.destinations.length === 0) {
       await refreshNotebookList({ auto: true });
@@ -139,10 +151,10 @@ async function handleSubmit(): Promise<void> {
   }
 
   const destinations = getSelectedDestinations();
-  const dailyEnabled = elements.dailyDestinationEnabled.checked;
+  const dateNotebookPeriods = getEnabledDateNotebookPeriods();
   const newNotebookEnabled = elements.newNotebookEnabled.checked;
 
-  if (destinations.length === 0 && !dailyEnabled && !newNotebookEnabled) {
+  if (destinations.length === 0 && dateNotebookPeriods.length === 0 && !newNotebookEnabled) {
     showMessage("追加先を1つ以上選択してください。", "danger");
     return;
   }
@@ -152,96 +164,33 @@ async function handleSubmit(): Promise<void> {
   try {
     state.settings = await rememberSelectedDestinations(getSelectedDestinationIdsFromForm());
     state.settings = await rememberTargetSettingsFromForm();
-    let dailyResult: NotebookDailyAddResult | undefined;
-    let newNotebookResult: NotebookCreateResult | undefined;
-
-    if (destinations.length > 0) {
-      showMessage(`登録済みノートブックへURLを追加しています... (${destinations.length}件)`, "neutral");
-      const response = await chrome.runtime.sendMessage({
-        type: "addSourcesToNotebooks",
-        payload: {
-          source: state.currentPage,
-          targets: destinations.map((destination) => ({
-            destinationId: destination.id,
-            name: destination.name,
-            notebookUrl: destination.notebookUrl
-          }))
-        }
-      });
-
-      if (!isBatchInjectionResponse(response)) {
-        throw new Error("URL追加の結果を取得できませんでした。");
+    showMessage("NotebookLMへの追加を開始しました。popupを閉じても続行します。", "neutral");
+    const response = await chrome.runtime.sendMessage({
+      type: "runNotebookAddJob",
+      payload: {
+        source: state.currentPage,
+        existingTargets: destinations.map((destination) => ({
+          destinationId: destination.id,
+          name: destination.name,
+          notebookUrl: destination.notebookUrl
+        })),
+        datePeriods: dateNotebookPeriods,
+        newNotebookTitle: newNotebookEnabled ? elements.newTitle.value : undefined
       }
+    });
 
-      if (!response.ok) {
-        throw new Error(response.error);
-      }
+    if (!isAddJobResponse(response)) {
+      throw new Error("NotebookLM追加結果を取得できませんでした。");
     }
 
-    if (dailyEnabled) {
-      showMessage("Dailyノートブックを確認してURLを追加しています...", "neutral");
-      const response = await chrome.runtime.sendMessage({
-        type: "addSourceToDailyNotebook",
-        payload: {
-          source: state.currentPage
-        }
-      });
-
-      if (!isDailyAddResponse(response)) {
-        throw new Error("Dailyノートブック追加の結果を取得できませんでした。");
-      }
-
-      if (!response.ok) {
-        throw new Error(response.error);
-      }
-
-      dailyResult = response.result;
-      state.settings = await upsertDestination({
-        name: dailyResult.title,
-        notebookUrl: dailyResult.notebookUrl
-      });
+    if (!response.ok) {
+      throw new Error(response.error);
     }
 
-    if (newNotebookEnabled) {
-      const title = elements.newTitle.value.trim() || state.currentPage.title;
-      showMessage("新しいNotebookLMノートブックを作成しています...", "neutral");
-      const response = await chrome.runtime.sendMessage({
-        type: "createNotebookLmNotebook",
-        payload: {
-          title,
-          source: state.currentPage
-        }
-      });
-
-      if (!isNotebookCreateResponse(response)) {
-        throw new Error("新規ノートブック作成の結果を取得できませんでした。");
-      }
-
-      if (!response.ok) {
-        throw new Error(response.error);
-      }
-
-      newNotebookResult = response.result;
-      state.settings = await upsertDestination({
-        name: newNotebookResult.title,
-        notebookUrl: newNotebookResult.notebookUrl
-      });
-
-      await chrome.tabs.create({
-        url: newNotebookResult.notebookUrl,
-        active: true
-      });
-    }
-
+    state.settings = await loadSettings();
     renderDestinations(state.settings);
-    showMessage(
-      buildCompletionMessage({
-        existingCount: destinations.length,
-        dailyResult,
-        newNotebookResult
-      }),
-      "neutral"
-    );
+    renderLastAddStatus(response.result.status);
+    showMessage(response.result.status.message, getStatusMessageVariant(response.result.status));
   } catch (error) {
     showMessage(getErrorMessage(error), "danger");
   } finally {
@@ -264,12 +213,14 @@ async function getCurrentPage(): Promise<CurrentPage> {
 
 function applyCurrentPage(currentPage: CurrentPage): void {
   elements.newTitle.value = currentPage.title;
-  elements.dailyTitle.textContent = getDailyNotebookTitle();
+  applyDateNotebookTitles();
 }
 
 function renderDestinations(settings: AppSettings): void {
   elements.destinationList.replaceChildren();
   elements.dailyDestinationEnabled.checked = settings.dailyDestinationEnabled;
+  elements.weeklyDestinationEnabled.checked = settings.weeklyDestinationEnabled;
+  elements.monthlyDestinationEnabled.checked = settings.monthlyDestinationEnabled;
   elements.newNotebookEnabled.checked = settings.newNotebookEnabled;
 
   if (settings.destinations.length === 0) {
@@ -361,9 +312,9 @@ function getSelectedDestinations(): Destination[] {
 
 function updateSendButtonLabel(): void {
   const existingCount = getSelectedDestinationIdsFromForm().length;
-  const dailyCount = elements.dailyDestinationEnabled.checked ? 1 : 0;
+  const dateNotebookCount = getEnabledDateNotebookPeriods().length;
   const newNotebookCount = elements.newNotebookEnabled.checked ? 1 : 0;
-  const total = existingCount + dailyCount + newNotebookCount;
+  const total = existingCount + dateNotebookCount + newNotebookCount;
   elements.sendButton.textContent = total > 0 ? `NotebookLM に追加 (${total})` : "NotebookLM に追加";
 }
 
@@ -381,6 +332,8 @@ async function rememberSelectionAndTargetSettingsFromForm(): Promise<void> {
 async function rememberTargetSettingsFromForm(): Promise<AppSettings> {
   const nextSettings = await rememberPopupTargetSettings({
     dailyDestinationEnabled: elements.dailyDestinationEnabled.checked,
+    weeklyDestinationEnabled: elements.weeklyDestinationEnabled.checked,
+    monthlyDestinationEnabled: elements.monthlyDestinationEnabled.checked,
     newNotebookEnabled: elements.newNotebookEnabled.checked
   });
   state.settings = nextSettings;
@@ -392,30 +345,62 @@ function updateControlState(): void {
   elements.newTitle.disabled = !elements.newNotebookEnabled.checked;
 }
 
-function buildCompletionMessage(input: {
-  existingCount: number;
-  dailyResult?: NotebookDailyAddResult;
-  newNotebookResult?: NotebookCreateResult;
-}): string {
-  const targets: string[] = [];
-
-  if (input.existingCount > 0) {
-    targets.push(`登録済み${input.existingCount}件`);
+function renderLastAddStatus(status: LastAddStatus | undefined): void {
+  if (!status) {
+    elements.lastResult.textContent = "";
+    elements.lastResult.removeAttribute("data-variant");
+    return;
   }
 
-  if (input.dailyResult) {
-    targets.push("Daily");
-  }
-
-  if (input.newNotebookResult) {
-    targets.push("新規");
-  }
-
-  return `NotebookLMへの追加を実行しました（${targets.join(" + ")}）。`;
+  elements.lastResult.textContent = `前回の追加: ${status.message}`;
+  elements.lastResult.dataset.variant = getStatusMessageVariant(status);
 }
 
-function getDailyNotebookTitle(date = new Date()): string {
-  return `Daily ${formatLocalDate(date)}`;
+function getStatusMessageVariant(status: LastAddStatus): "neutral" | "success" | "danger" {
+  if (status.state === "success") {
+    return "success";
+  }
+
+  if (status.state === "partial" || status.state === "failure") {
+    return "danger";
+  }
+
+  return "neutral";
+}
+
+function getEnabledDateNotebookPeriods(): DateNotebookPeriod[] {
+  const periods: DateNotebookPeriod[] = [];
+
+  if (elements.dailyDestinationEnabled.checked) {
+    periods.push("daily");
+  }
+
+  if (elements.weeklyDestinationEnabled.checked) {
+    periods.push("weekly");
+  }
+
+  if (elements.monthlyDestinationEnabled.checked) {
+    periods.push("monthly");
+  }
+
+  return periods;
+}
+
+function applyDateNotebookTitles(date = new Date()): void {
+  elements.dailyTitle.textContent = getDateNotebookTitle("daily", date);
+  elements.weeklyTitle.textContent = getDateNotebookTitle("weekly", date);
+  elements.monthlyTitle.textContent = getDateNotebookTitle("monthly", date);
+}
+
+function getDateNotebookTitle(period: DateNotebookPeriod, date = new Date()): string {
+  switch (period) {
+    case "daily":
+      return `Daily ${formatLocalDate(date)}`;
+    case "weekly":
+      return `Weekly ${formatLocalIsoWeek(date)}`;
+    case "monthly":
+      return `Monthly ${formatLocalMonth(date)}`;
+  }
 }
 
 function formatLocalDate(date: Date): string {
@@ -424,6 +409,26 @@ function formatLocalDate(date: Date): string {
   const day = date.getDate().toString().padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+function formatLocalMonth(date: Date): string {
+  const year = date.getFullYear().toString();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+
+  return `${year}-${month}`;
+}
+
+function formatLocalIsoWeek(date: Date): string {
+  const weekDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = weekDate.getUTCDay() || 7;
+  weekDate.setUTCDate(weekDate.getUTCDate() + 4 - day);
+
+  const isoYear = weekDate.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(isoYear, 0, 1));
+  const days = Math.floor((weekDate.getTime() - yearStart.getTime()) / 86400000) + 1;
+  const week = Math.ceil(days / 7).toString().padStart(2, "0");
+
+  return `${isoYear}-W${week}`;
 }
 
 function formatNotebookName(notebook: NotebookListResult["notebooks"][number]): string {
@@ -449,53 +454,26 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "予期しないエラーが発生しました。";
 }
 
-function isNotebookCreateResponse(value: unknown): value is
-  | { ok: true; result: NotebookCreateResult }
+function isAddJobResponse(value: unknown): value is
+  | { ok: true; result: NotebookAddJobResult }
   | { ok: false; error: string } {
   if (!isRecord(value) || typeof value.ok !== "boolean") {
     return false;
   }
 
   return value.ok
-    ? isRecord(value.result) &&
-        typeof value.result.message === "string" &&
-        typeof value.result.ok === "boolean" &&
-        typeof value.result.notebookId === "string" &&
-        typeof value.result.notebookUrl === "string"
+    ? isRecord(value.result) && isLastAddStatus(value.result.status)
     : typeof value.error === "string";
 }
 
-function isBatchInjectionResponse(value: unknown): value is
-  | { ok: true; result: NotebookDirectAddBatchResult }
-  | { ok: false; error: string } {
-  if (!isRecord(value) || typeof value.ok !== "boolean") {
-    return false;
-  }
-
-  return value.ok
-    ? isRecord(value.result) &&
-        typeof value.result.message === "string" &&
-        typeof value.result.ok === "boolean" &&
-        typeof value.result.attemptedCount === "number"
-    : typeof value.error === "string";
-}
-
-function isDailyAddResponse(value: unknown): value is
-  | { ok: true; result: NotebookDailyAddResult }
-  | { ok: false; error: string } {
-  if (!isRecord(value) || typeof value.ok !== "boolean") {
-    return false;
-  }
-
-  return value.ok
-    ? isRecord(value.result) &&
-        typeof value.result.message === "string" &&
-        typeof value.result.ok === "boolean" &&
-        typeof value.result.notebookId === "string" &&
-        typeof value.result.notebookUrl === "string" &&
-        typeof value.result.title === "string" &&
-        typeof value.result.created === "boolean"
-    : typeof value.error === "string";
+function isLastAddStatus(value: unknown): value is LastAddStatus {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    (value.state === "running" || value.state === "success" || value.state === "partial" || value.state === "failure") &&
+    typeof value.message === "string" &&
+    typeof value.checkedAt === "string"
+  );
 }
 
 function isNotebookListResponse(value: unknown): value is

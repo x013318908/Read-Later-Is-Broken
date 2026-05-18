@@ -1,12 +1,17 @@
 import type {
+  AddJobStatusItem,
   CurrentPage,
+  DateNotebookPeriod,
+  LastAddStatus,
+  NotebookAddJobRequest,
+  NotebookAddJobResult,
   NotebookDirectAddFailure,
   NotebookDirectAddBatchRequest,
   NotebookDirectAddBatchResult,
   NotebookCreateRequest,
   NotebookCreateResult,
-  NotebookDailyAddRequest,
-  NotebookDailyAddResult,
+  NotebookDateAddRequest,
+  NotebookDateAddResult,
   NotebookDirectAddRequest,
   NotebookDirectAddResponseKind,
   NotebookDirectAddResult,
@@ -15,10 +20,19 @@ import type {
   NotebookListRequest,
   NotebookListResult
 } from "./shared/types";
+import { rememberLastAddStatus, upsertDestination } from "./shared/storage";
 
 const MAX_PARALLEL_NOTEBOOK_ADDS = 3;
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (isNotebookAddJobMessage(message)) {
+    void handleNotebookAddJob(message.payload)
+      .then((result) => sendResponse({ ok: true, result }))
+      .catch((error: unknown) => sendResponse({ ok: false, error: getErrorMessage(error) }));
+
+    return true;
+  }
+
   if (isNotebookDirectAddMessage(message)) {
     void handleNotebookDirectAdd(message.payload)
       .then((result) => sendResponse({ ok: true, result }))
@@ -51,8 +65,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
-  if (isNotebookDailyAddMessage(message)) {
-    void handleNotebookDailyAdd(message.payload)
+  if (isNotebookDateAddMessage(message)) {
+    void handleNotebookDateAdd(message.payload)
       .then((result) => sendResponse({ ok: true, result }))
       .catch((error: unknown) => sendResponse({ ok: false, error: getErrorMessage(error) }));
 
@@ -62,8 +76,151 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return false;
 });
 
+async function handleNotebookAddJob(request: NotebookAddJobRequest): Promise<NotebookAddJobResult> {
+  const startedAt = new Date().toISOString();
+  const status: LastAddStatus = {
+    id: crypto.randomUUID(),
+    state: "running",
+    source: request.source,
+    startedAt,
+    checkedAt: startedAt,
+    message: "NotebookLMへの追加を実行中です。",
+    items: []
+  };
+
+  await rememberLastAddStatus(status);
+
+  const persistStatus = async (): Promise<void> => {
+    status.checkedAt = new Date().toISOString();
+    await rememberLastAddStatus({ ...status, items: [...status.items] });
+  };
+
+  if (request.existingTargets.length > 0) {
+    try {
+      const batchResult = await handleNotebookDirectAddBatch({
+        source: request.source,
+        targets: request.existingTargets
+      });
+      status.items.push({
+        kind: "existing",
+        name: `登録済み${request.existingTargets.length}件`,
+        ok: true,
+        message: batchResult.message
+      });
+    } catch (error) {
+      status.items.push({
+        kind: "existing",
+        name: `登録済み${request.existingTargets.length}件`,
+        ok: false,
+        message: getErrorMessage(error)
+      });
+    }
+
+    await persistStatus();
+  }
+
+  for (const period of request.datePeriods) {
+    try {
+      const result = await handleNotebookDateAdd({
+        period,
+        source: request.source
+      });
+      status.items.push({
+        kind: period,
+        name: result.title,
+        ok: true,
+        message: result.message,
+        notebookUrl: result.notebookUrl
+      });
+      await upsertDestination({
+        name: result.title,
+        notebookUrl: result.notebookUrl
+      });
+    } catch (error) {
+      status.items.push({
+        kind: period,
+        name: getDateNotebookTitle(period),
+        ok: false,
+        message: getErrorMessage(error)
+      });
+    }
+
+    await persistStatus();
+  }
+
+  if (request.newNotebookTitle !== undefined) {
+    try {
+      const result = await handleNotebookCreate({
+        title: request.newNotebookTitle,
+        source: request.source
+      });
+      status.items.push({
+        kind: "new",
+        name: getNewNotebookDisplayName(result.title),
+        ok: true,
+        message: result.message,
+        notebookUrl: result.notebookUrl
+      });
+      await upsertDestination({
+        name: getNewNotebookDisplayName(result.title),
+        notebookUrl: result.notebookUrl
+      });
+      await chrome.tabs.create({
+        url: result.notebookUrl,
+        active: true
+      });
+    } catch (error) {
+      status.items.push({
+        kind: "new",
+        name: getNewNotebookDisplayName(request.newNotebookTitle),
+        ok: false,
+        message: getErrorMessage(error)
+      });
+    }
+
+    await persistStatus();
+  }
+
+  status.state = getFinalAddJobState(status.items);
+  status.message = buildAddJobStatusMessage(status.items);
+  await persistStatus();
+
+  return { status };
+}
+
 async function handleNotebookDirectAdd(request: NotebookDirectAddRequest): Promise<NotebookDirectAddResult> {
   return addSourceToNotebookTarget(request, { active: true, closeWhenDone: false });
+}
+
+function getFinalAddJobState(items: AddJobStatusItem[]): LastAddStatus["state"] {
+  if (items.length === 0 || items.every((item) => !item.ok)) {
+    return "failure";
+  }
+
+  return items.every((item) => item.ok) ? "success" : "partial";
+}
+
+function buildAddJobStatusMessage(items: AddJobStatusItem[]): string {
+  const successItems = items.filter((item) => item.ok);
+  const failureItems = items.filter((item) => !item.ok);
+
+  if (items.length === 0) {
+    return "追加先がありませんでした。";
+  }
+
+  if (failureItems.length === 0) {
+    return `NotebookLMへの追加を実行しました（${successItems.map((item) => item.name).join(" + ")}）。`;
+  }
+
+  const failures = failureItems.map((item) => `${item.name}: ${item.message}`).join(" / ");
+
+  if (successItems.length === 0) {
+    return `NotebookLMへの追加に失敗しました（${failures}）。`;
+  }
+
+  return `NotebookLMへの追加を一部実行しました（${successItems
+    .map((item) => item.name)
+    .join(" + ")}）。失敗: ${failures}`;
 }
 
 async function handleNotebookDirectAddBatch(request: NotebookDirectAddBatchRequest): Promise<NotebookDirectAddBatchResult> {
@@ -99,10 +256,10 @@ async function handleNotebookList(request: NotebookListRequest): Promise<Noteboo
 }
 
 async function handleNotebookCreate(request: NotebookCreateRequest): Promise<NotebookCreateResult> {
-  const title = request.title.trim() || request.source.title || "Untitled";
+  const title = request.title;
   const authParams = await loadNotebookLmAuthParams(request.authuser);
   const [createResponse] = await executeNotebookLmRpcs(authParams, [
-    { id: "CCqFvf", args: [title, request.emoji ?? getNotebookEmoji(request.source.url)] }
+    { id: "CCqFvf", args: buildNotebookCreateArgs(title, request.emoji) }
   ]);
   const notebookId = parseNotebookCreateResponse(createResponse);
   const notebookUrl = buildNotebookUrl(notebookId, request.authuser);
@@ -121,16 +278,18 @@ async function handleNotebookCreate(request: NotebookCreateRequest): Promise<Not
   };
 }
 
-async function handleNotebookDailyAdd(request: NotebookDailyAddRequest): Promise<NotebookDailyAddResult> {
-  const title = getDailyNotebookTitle();
+async function handleNotebookDateAdd(request: NotebookDateAddRequest): Promise<NotebookDateAddResult> {
+  const title = getDateNotebookTitle(request.period);
   const authParams = await loadNotebookLmAuthParams(request.authuser);
   const [listResponse] = await executeNotebookLmRpcs(authParams, [{ id: "wXbhsf", args: [null, 1] }]);
-  const existingNotebook = selectDailyNotebook(parseNotebookListResponse(listResponse, request.authuser), title);
+  const existingNotebook = selectDateNotebook(parseNotebookListResponse(listResponse, request.authuser), title);
   let notebookId = existingNotebook?.notebookId;
   let created = false;
 
   if (!notebookId) {
-    const [createResponse] = await executeNotebookLmRpcs(authParams, [{ id: "CCqFvf", args: [title, "📔"] }]);
+    const [createResponse] = await executeNotebookLmRpcs(authParams, [
+      { id: "CCqFvf", args: buildNotebookCreateArgs(title, getDateNotebookEmoji(request.period)) }
+    ]);
     notebookId = parseNotebookCreateResponse(createResponse);
     created = true;
   }
@@ -141,12 +300,15 @@ async function handleNotebookDailyAdd(request: NotebookDailyAddRequest): Promise
   const checkedAt = new Date().toISOString();
   return {
     ok: true,
+    period: request.period,
     notebookId,
     notebookUrl,
     title,
     source: request.source,
     created,
-    message: `Dailyノートブック「${title}」を${created ? "作成" : "再利用"}し、URL追加を実行しました。`,
+    message: `${getDateNotebookLabel(request.period)}ノートブック「${title}」を${
+      created ? "作成" : "再利用"
+    }し、URL追加を実行しました。`,
     checkedAt
   };
 }
@@ -319,14 +481,47 @@ function parseNotebookUpdatedAtMs(row: unknown[]): number | undefined {
   return undefined;
 }
 
-function selectDailyNotebook(notebooks: NotebookListItem[], title: string): NotebookListItem | undefined {
+function selectDateNotebook(notebooks: NotebookListItem[], title: string): NotebookListItem | undefined {
   return notebooks
     .filter((notebook) => notebook.title === title)
     .sort((a, b) => (b.updatedAtMs ?? -1) - (a.updatedAtMs ?? -1))[0];
 }
 
-function getDailyNotebookTitle(date = new Date()): string {
-  return `Daily ${formatLocalDate(date)}`;
+function getDateNotebookTitle(period: DateNotebookPeriod, date = new Date()): string {
+  switch (period) {
+    case "daily":
+      return `Daily ${formatLocalDate(date)}`;
+    case "weekly":
+      return `Weekly ${formatLocalIsoWeek(date)}`;
+    case "monthly":
+      return `Monthly ${formatLocalMonth(date)}`;
+  }
+}
+
+function getDateNotebookLabel(period: DateNotebookPeriod): string {
+  switch (period) {
+    case "daily":
+      return "Daily";
+    case "weekly":
+      return "Weekly";
+    case "monthly":
+      return "Monthly";
+  }
+}
+
+function getNewNotebookDisplayName(title: string): string {
+  return title.trim() || "新しいノートブック";
+}
+
+function getDateNotebookEmoji(period: DateNotebookPeriod): string {
+  switch (period) {
+    case "daily":
+      return "📔";
+    case "weekly":
+      return "📅";
+    case "monthly":
+      return "🗓️";
+  }
 }
 
 function formatLocalDate(date: Date): string {
@@ -337,9 +532,29 @@ function formatLocalDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function formatLocalMonth(date: Date): string {
+  const year = date.getFullYear().toString();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+
+  return `${year}-${month}`;
+}
+
+function formatLocalIsoWeek(date: Date): string {
+  const weekDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = weekDate.getUTCDay() || 7;
+  weekDate.setUTCDate(weekDate.getUTCDate() + 4 - day);
+
+  const isoYear = weekDate.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(isoYear, 0, 1));
+  const days = Math.floor((weekDate.getTime() - yearStart.getTime()) / 86400000) + 1;
+  const week = Math.ceil(days / 7).toString().padStart(2, "0");
+
+  return `${isoYear}-W${week}`;
+}
+
 function parseNotebookCreateResponse(response: NotebookLmRpcResponse | undefined): string {
   if (!response || response.rpcId !== "CCqFvf" || !Array.isArray(response.data) || typeof response.data[2] !== "string") {
-    throw new Error("NotebookLMの新規ノートブック作成結果を読み込めませんでした。");
+    throw new Error("NotebookLMの新規ノートブックを作成できませんでした。ノートブック数の上限に達している可能性があります。");
   }
 
   return response.data[2];
@@ -358,12 +573,12 @@ async function addNotebookLmSources(
   ]);
 
   if (!response || response.rpcId !== "izAoDd" || !response.data) {
-    throw new Error("NotebookLMノートブックへURLを追加できませんでした。");
+    throw new Error("NotebookLMノートブックへURLを追加できませんでした。ノートブック内のソース数上限、保護されたページ、または非対応URLの可能性があります。");
   }
 }
 
-function getNotebookEmoji(sourceUrl: string): string {
-  return sourceUrl.includes("youtube.com") ? "📺" : "📔";
+function buildNotebookCreateArgs(title: string, emoji?: string): unknown[] {
+  return emoji === undefined ? [title] : [title, emoji];
 }
 
 function buildNotebookUrl(notebookId: string, authuser?: string): string {
@@ -811,6 +1026,23 @@ function getNotebookTarget(notebookUrl: string): { notebookId: string; authuser?
   }
 }
 
+function isNotebookAddJobMessage(value: unknown): value is {
+  type: "runNotebookAddJob";
+  payload: NotebookAddJobRequest;
+} {
+  return (
+    isRecord(value) &&
+    value.type === "runNotebookAddJob" &&
+    isRecord(value.payload) &&
+    isCurrentPage(value.payload.source) &&
+    Array.isArray(value.payload.existingTargets) &&
+    value.payload.existingTargets.every(isNotebookDirectAddTarget) &&
+    Array.isArray(value.payload.datePeriods) &&
+    value.payload.datePeriods.every(isDateNotebookPeriod) &&
+    (value.payload.newNotebookTitle === undefined || typeof value.payload.newNotebookTitle === "string")
+  );
+}
+
 function isNotebookDirectAddMessage(value: unknown): value is {
   type: "addSourceToNotebook";
   payload: NotebookDirectAddRequest;
@@ -866,17 +1098,22 @@ function isNotebookCreateMessage(value: unknown): value is {
   );
 }
 
-function isNotebookDailyAddMessage(value: unknown): value is {
-  type: "addSourceToDailyNotebook";
-  payload: NotebookDailyAddRequest;
+function isNotebookDateAddMessage(value: unknown): value is {
+  type: "addSourceToDateNotebook";
+  payload: NotebookDateAddRequest;
 } {
   return (
     isRecord(value) &&
-    value.type === "addSourceToDailyNotebook" &&
+    value.type === "addSourceToDateNotebook" &&
     isRecord(value.payload) &&
+    isDateNotebookPeriod(value.payload.period) &&
     isCurrentPage(value.payload.source) &&
     (value.payload.authuser === undefined || typeof value.payload.authuser === "string")
   );
+}
+
+function isDateNotebookPeriod(value: unknown): value is DateNotebookPeriod {
+  return value === "daily" || value === "weekly" || value === "monthly";
 }
 
 function isNotebookDirectAddTarget(value: unknown): value is NotebookDirectAddTarget {
