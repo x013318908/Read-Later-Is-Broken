@@ -1,6 +1,7 @@
-import type { AppSettings, Destination } from "./types";
+import type { AppSettings, Destination, NotebookDirectAddResult } from "./types";
 
 const STORAGE_KEY = "settings";
+const LAST_DIRECT_ADD_RESULT_KEY = "lastNotebookDirectAddResult";
 
 const DEFAULT_SETTINGS: AppSettings = {
   destinations: []
@@ -70,6 +71,15 @@ export async function rememberLastDestination(id: string): Promise<void> {
   await saveSettings({ ...settings, lastDestinationId: id });
 }
 
+export function loadLastNotebookDirectAddResult(): Promise<NotebookDirectAddResult | undefined> {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(LAST_DIRECT_ADD_RESULT_KEY, (items) => {
+      const value = items[LAST_DIRECT_ADD_RESULT_KEY];
+      resolve(isNotebookDirectAddResult(value) ? value : undefined);
+    });
+  });
+}
+
 function normalizeSettings(value: unknown): AppSettings {
   if (!isRecord(value)) {
     return DEFAULT_SETTINGS;
@@ -104,6 +114,27 @@ function isDestination(value: unknown): value is Destination {
     typeof value.createdAt === "string" &&
     typeof value.updatedAt === "string"
   );
+}
+
+function isNotebookDirectAddResult(value: unknown): value is NotebookDirectAddResult {
+  return (
+    isRecord(value) &&
+    typeof value.ok === "boolean" &&
+    typeof value.notebookUrl === "string" &&
+    isCurrentPage(value.source) &&
+    isRecord(value.tokens) &&
+    typeof value.tokens.at === "boolean" &&
+    typeof value.tokens.bl === "boolean" &&
+    isRecord(value.rpc) &&
+    typeof value.rpc.attempted === "boolean" &&
+    typeof value.rpc.ok === "boolean" &&
+    typeof value.message === "string" &&
+    typeof value.checkedAt === "string"
+  );
+}
+
+function isCurrentPage(value: unknown): boolean {
+  return isRecord(value) && typeof value.title === "string" && typeof value.url === "string";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

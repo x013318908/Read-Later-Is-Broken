@@ -10,7 +10,7 @@
       <section class="intro">
         <p class="product">Read Later Is Broken</p>
         <h1>保存先ノートブック</h1>
-        <p>NotebookLM のノートブック URL を手動で登録します。公式 API や非公開 UI には依存しません。</p>
+        <p>NotebookLM のノートブック URL を手動で登録します。Google や NotebookLM の公式ツールではありません。</p>
       </section>
 
       <form id="destination-form" class="destination-form">
@@ -30,6 +30,15 @@
         <h2 id="saved-heading">登録済み</h2>
         <div id="empty-state" class="empty-state">まだ保存先がありません。</div>
         <ul id="destination-list" class="destination-list"></ul>
+      </section>
+
+      <section aria-labelledby="diagnostic-heading" class="diagnostic-section">
+        <div class="section-header">
+          <h2 id="diagnostic-heading">最後の追加結果</h2>
+          <button id="copy-diagnostic-button" type="button" class="secondary-button small">コピー</button>
+        </div>
+        <div id="diagnostic-empty" class="empty-state">まだ追加結果はありません。</div>
+        <dl id="diagnostic-list" class="diagnostic-list"></dl>
       </section>
 
       <footer>
