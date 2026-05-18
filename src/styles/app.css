@@ -96,8 +96,7 @@ legend {
 
 .source-panel,
 .destination-form,
-.saved-section,
-.diagnostic-section {
+.saved-section {
   border: 1px solid rgba(39, 35, 30, 0.12);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.78);
@@ -357,14 +356,12 @@ footer {
   margin: 0;
 }
 
-.saved-section,
-.diagnostic-section {
+.saved-section {
   margin-top: 18px;
   padding: 18px;
 }
 
-.saved-section h2,
-.diagnostic-section h2 {
+.saved-section h2 {
   margin-bottom: 12px;
 }
 
@@ -416,39 +413,13 @@ footer {
   font-size: 12px;
 }
 
-.diagnostic-list {
-  display: grid;
-  grid-template-columns: 110px minmax(0, 1fr);
-  gap: 8px 12px;
-  margin: 0;
-}
-
-.diagnostic-list dt,
-.diagnostic-list dd {
-  min-width: 0;
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.diagnostic-list dt {
-  color: #403b34;
-  font-weight: 800;
-}
-
-.diagnostic-list dd {
-  overflow-wrap: anywhere;
-  color: #6d655b;
-}
-
 @media (max-width: 680px) {
   body {
     min-width: 0;
   }
 
   .destination-form,
-  .destination-item,
-  .diagnostic-list {
+  .destination-item {
     grid-template-columns: 1fr;
   }
 }

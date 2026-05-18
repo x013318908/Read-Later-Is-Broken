@@ -57,19 +57,10 @@ export interface NotebookDirectAddResult {
 export interface NotebookDirectAddBatchResult {
   ok: boolean;
   source: CurrentPage;
-  items: NotebookDirectAddBatchItem[];
-  successCount: number;
-  failureCount: number;
+  attemptedCount: number;
   message: string;
   checkedAt: string;
 }
-
-export interface NotebookDirectAddBatchItem {
-  target: NotebookDirectAddTarget;
-  result: NotebookDirectAddResult;
-}
-
-export type NotebookDirectAddStoredResult = NotebookDirectAddResult | NotebookDirectAddBatchResult;
 
 export type NotebookDirectAddResponseKind =
   | "not-attempted"

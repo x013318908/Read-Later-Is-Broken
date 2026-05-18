@@ -1,7 +1,6 @@
-import type { AppSettings, Destination, NotebookDirectAddStoredResult } from "./types";
+import type { AppSettings, Destination } from "./types";
 
 const STORAGE_KEY = "settings";
-const LAST_DIRECT_ADD_RESULT_KEY = "lastNotebookDirectAddResult";
 
 const DEFAULT_SETTINGS: AppSettings = {
   destinations: [],
@@ -77,15 +76,6 @@ export async function rememberSelectedDestinations(ids: string[]): Promise<AppSe
   return nextSettings;
 }
 
-export function loadLastNotebookDirectAddResult(): Promise<NotebookDirectAddStoredResult | undefined> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(LAST_DIRECT_ADD_RESULT_KEY, (items) => {
-      const value = items[LAST_DIRECT_ADD_RESULT_KEY];
-      resolve(isNotebookDirectAddStoredResult(value) ? value : undefined);
-    });
-  });
-}
-
 function normalizeSettings(value: unknown): AppSettings {
   if (!isRecord(value)) {
     return DEFAULT_SETTINGS;
@@ -125,49 +115,6 @@ function isDestination(value: unknown): value is Destination {
     typeof value.createdAt === "string" &&
     typeof value.updatedAt === "string"
   );
-}
-
-function isNotebookDirectAddStoredResult(value: unknown): value is NotebookDirectAddStoredResult {
-  return isNotebookDirectAddResult(value) || isNotebookDirectAddBatchResult(value);
-}
-
-function isNotebookDirectAddResult(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    typeof value.ok === "boolean" &&
-    typeof value.notebookUrl === "string" &&
-    isCurrentPage(value.source) &&
-    isRecord(value.tokens) &&
-    typeof value.tokens.at === "boolean" &&
-    typeof value.tokens.bl === "boolean" &&
-    isRecord(value.rpc) &&
-    typeof value.rpc.attempted === "boolean" &&
-    typeof value.rpc.ok === "boolean" &&
-    typeof value.message === "string" &&
-    typeof value.checkedAt === "string"
-  );
-}
-
-function isNotebookDirectAddBatchResult(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    typeof value.ok === "boolean" &&
-    isCurrentPage(value.source) &&
-    Array.isArray(value.items) &&
-    value.items.every(isNotebookDirectAddBatchItem) &&
-    typeof value.successCount === "number" &&
-    typeof value.failureCount === "number" &&
-    typeof value.message === "string" &&
-    typeof value.checkedAt === "string"
-  );
-}
-
-function isNotebookDirectAddBatchItem(value: unknown): boolean {
-  return isRecord(value) && isRecord(value.target) && isNotebookDirectAddResult(value.result);
-}
-
-function isCurrentPage(value: unknown): boolean {
-  return isRecord(value) && typeof value.title === "string" && typeof value.url === "string";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -101,7 +101,7 @@ async function handleSubmit(): Promise<void> {
         throw new Error(response.error);
       }
 
-      showMessage(response.result.message, response.result.ok ? "success" : "danger");
+      showMessage(response.result.message, "neutral");
       renderDestinations(state.settings);
       return;
     }
@@ -280,7 +280,7 @@ function isBatchInjectionResponse(value: unknown): value is
     ? isRecord(value.result) &&
         typeof value.result.message === "string" &&
         typeof value.result.ok === "boolean" &&
-        Array.isArray(value.result.items)
+        typeof value.result.attemptedCount === "number"
     : typeof value.error === "string";
 }
 

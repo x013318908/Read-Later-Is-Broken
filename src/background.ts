@@ -36,55 +36,39 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 async function handleNotebookDirectAdd(request: NotebookDirectAddRequest): Promise<NotebookDirectAddResult> {
-  const result = await addSourceToNotebookTarget(request, { active: true, closeWhenDone: false });
-  await chrome.storage.local.set({ lastNotebookDirectAddResult: result });
-  return result;
+  return addSourceToNotebookTarget(request, { active: true, closeWhenDone: false });
 }
 
 async function handleNotebookDirectAddBatch(request: NotebookDirectAddBatchRequest): Promise<NotebookDirectAddBatchResult> {
-  const items: NotebookDirectAddBatchResult["items"] = [];
+  let attemptedCount = 0;
 
   for (const target of request.targets) {
+    attemptedCount += 1;
+
     try {
-      const result = await addSourceToNotebookTarget(
+      await addSourceToNotebookTarget(
         {
           notebookUrl: target.notebookUrl,
           source: request.source
         },
         { active: false, closeWhenDone: true }
       );
-      items.push({ target, result });
     } catch (error) {
-      items.push({
-        target,
-        result: createNotebookDirectAddErrorResult({
-          notebookUrl: target.notebookUrl,
-          source: request.source,
-          error
-        })
-      });
+      console.warn(
+        `Read Later Is Broken: NotebookLM add request did not return a stable result for ${target.name}.`,
+        getErrorMessage(error)
+      );
     }
   }
 
-  const successCount = items.filter((item) => item.result.ok).length;
-  const failureCount = items.length - successCount;
-  const firstFailure = items.find((item) => !item.result.ok)?.result.failure;
   const checkedAt = new Date().toISOString();
-  const result: NotebookDirectAddBatchResult = {
-    ok: failureCount === 0,
+  return {
+    ok: true,
     source: request.source,
-    items,
-    successCount,
-    failureCount,
-    message:
-      failureCount === 0
-        ? `URL追加OK: ${successCount}件のノートブックに追加しました。Deep Diveは生成していません。`
-        : `URL追加NG: 成功${successCount}件 / 失敗${failureCount}件。${firstFailure?.title ?? "一部の追加に失敗しました。"}`,
+    attemptedCount,
+    message: `NotebookLMへの追加を実行しました（${attemptedCount}件）。NotebookLM側でソース一覧を確認してください。Deep Diveは生成していません。`,
     checkedAt
   };
-
-  await chrome.storage.local.set({ lastNotebookDirectAddResult: result });
-  return result;
 }
 
 async function addSourceToNotebookTarget(
@@ -427,38 +411,6 @@ async function addSourceToNotebookPage(input: {
     status.append(meta);
     document.body.append(status);
   }
-}
-
-function createNotebookDirectAddErrorResult(input: {
-  notebookUrl: string;
-  source: CurrentPage;
-  error: unknown;
-}): NotebookDirectAddResult {
-  const failure: NotebookDirectAddFailure = {
-    code: "request-error",
-    title: "NotebookLMタブでURL追加を完了できませんでした。",
-    action: "NotebookLMのログイン状態、登録したノートブックURL、またはネットワーク状態を確認してください。",
-    diagnostic: getErrorMessage(input.error)
-  };
-
-  return {
-    ok: false,
-    notebookUrl: input.notebookUrl,
-    source: input.source,
-    tokens: {
-      at: false,
-      bl: false
-    },
-    rpc: {
-      attempted: false,
-      ok: false,
-      responseKind: "request-error",
-      error: getErrorMessage(input.error)
-    },
-    failure,
-    message: `URL追加NG: ${failure.title} ${failure.action}`,
-    checkedAt: new Date().toISOString()
-  };
 }
 
 function waitForTabComplete(tabId: number): Promise<void> {
