@@ -9,6 +9,8 @@ import type {
   NotebookDirectAddTarget
 } from "./shared/types";
 
+const MAX_PARALLEL_NOTEBOOK_ADDS = 3;
+
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === "install") {
     chrome.runtime.openOptionsPage();
@@ -40,25 +42,11 @@ async function handleNotebookDirectAdd(request: NotebookDirectAddRequest): Promi
 }
 
 async function handleNotebookDirectAddBatch(request: NotebookDirectAddBatchRequest): Promise<NotebookDirectAddBatchResult> {
-  let attemptedCount = 0;
+  const attemptedCount = request.targets.length;
 
-  for (const target of request.targets) {
-    attemptedCount += 1;
-
-    try {
-      await addSourceToNotebookTarget(
-        {
-          notebookUrl: target.notebookUrl,
-          source: request.source
-        },
-        { active: false, closeWhenDone: true }
-      );
-    } catch (error) {
-      console.warn(
-        `Read Later Is Broken: NotebookLM add request did not return a stable result for ${target.name}.`,
-        getErrorMessage(error)
-      );
-    }
+  for (let index = 0; index < request.targets.length; index += MAX_PARALLEL_NOTEBOOK_ADDS) {
+    const targets = request.targets.slice(index, index + MAX_PARALLEL_NOTEBOOK_ADDS);
+    await Promise.all(targets.map((target) => addSourceToNotebookTargetSilently(target, request.source)));
   }
 
   const checkedAt = new Date().toISOString();
@@ -69,6 +57,23 @@ async function handleNotebookDirectAddBatch(request: NotebookDirectAddBatchReque
     message: `NotebookLMへの追加を実行しました（${attemptedCount}件）。NotebookLM側でソース一覧を確認してください。Deep Diveは生成していません。`,
     checkedAt
   };
+}
+
+async function addSourceToNotebookTargetSilently(target: NotebookDirectAddTarget, source: CurrentPage): Promise<void> {
+  try {
+    await addSourceToNotebookTarget(
+      {
+        notebookUrl: target.notebookUrl,
+        source
+      },
+      { active: false, closeWhenDone: true }
+    );
+  } catch (error) {
+    console.warn(
+      `Read Later Is Broken: NotebookLM add request did not return a stable result for ${target.name}.`,
+      getErrorMessage(error)
+    );
+  }
 }
 
 async function addSourceToNotebookTarget(
