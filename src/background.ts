@@ -18,12 +18,6 @@ import type {
 
 const MAX_PARALLEL_NOTEBOOK_ADDS = 3;
 
-chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === "install") {
-    chrome.runtime.openOptionsPage();
-  }
-});
-
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (isNotebookDirectAddMessage(message)) {
     void handleNotebookDirectAdd(message.payload)
@@ -85,7 +79,7 @@ async function handleNotebookDirectAddBatch(request: NotebookDirectAddBatchReque
     ok: true,
     source: request.source,
     attemptedCount,
-    message: `NotebookLMへの追加を実行しました（${attemptedCount}件）。NotebookLM側でソース一覧を確認してください。Deep Diveは生成していません。`,
+    message: `NotebookLMへの追加を実行しました（${attemptedCount}件）。NotebookLM側でソース一覧を確認してください。`,
     checkedAt
   };
 }
@@ -122,7 +116,7 @@ async function handleNotebookCreate(request: NotebookCreateRequest): Promise<Not
     notebookUrl,
     title,
     source: request.source,
-    message: "新しいNotebookLMノートブックを作成し、URL追加を実行しました。Deep Diveは生成していません。",
+    message: "新しいNotebookLMノートブックを作成し、URL追加を実行しました。",
     checkedAt
   };
 }
@@ -152,7 +146,7 @@ async function handleNotebookDailyAdd(request: NotebookDailyAddRequest): Promise
     title,
     source: request.source,
     created,
-    message: `Dailyノートブック「${title}」を${created ? "作成" : "再利用"}し、URL追加を実行しました。Deep Diveは生成していません。`,
+    message: `Dailyノートブック「${title}」を${created ? "作成" : "再利用"}し、URL追加を実行しました。`,
     checkedAt
   };
 }
@@ -559,7 +553,7 @@ async function addSourceToNotebookPage(input: {
       });
   const message = failure
     ? `URL追加NG: ${failure.title} ${failure.action}`
-    : "URL追加OK: NotebookLMにソース追加RPCを送信しました。Deep Diveは生成していません。";
+    : "URL追加OK: NotebookLMにソース追加RPCを送信しました。";
 
   const result: NotebookDirectAddResult = {
     ok: rpcOk,

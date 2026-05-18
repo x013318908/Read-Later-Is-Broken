@@ -10,6 +10,7 @@ export interface AppSettings {
   destinations: Destination[];
   selectedDestinationIds: string[];
   dailyDestinationEnabled: boolean;
+  newNotebookEnabled: boolean;
 }
 
 export interface CurrentPage {

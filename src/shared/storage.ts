@@ -5,23 +5,16 @@ const STORAGE_KEY = "settings";
 const DEFAULT_SETTINGS: AppSettings = {
   destinations: [],
   selectedDestinationIds: [],
-  dailyDestinationEnabled: false
+  dailyDestinationEnabled: false,
+  newNotebookEnabled: false
 };
 
 export function loadSettings(): Promise<AppSettings> {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get({ [STORAGE_KEY]: DEFAULT_SETTINGS }, (items) => {
-      resolve(normalizeSettings(items[STORAGE_KEY]));
-    });
-  });
+  return loadSettingsFromStorage();
 }
 
 export function saveSettings(settings: AppSettings): Promise<void> {
-  return new Promise((resolve) => {
-    chrome.storage.sync.set({ [STORAGE_KEY]: normalizeSettings(settings) }, () => {
-      resolve();
-    });
-  });
+  return setStorageValue(chrome.storage.local, normalizeSettings(settings));
 }
 
 export async function upsertDestination(input: Pick<Destination, "name" | "notebookUrl">): Promise<AppSettings> {
@@ -55,51 +48,46 @@ export async function upsertDestination(input: Pick<Destination, "name" | "noteb
   return nextSettings;
 }
 
-export async function addMissingDestinations(
-  inputs: Array<Pick<Destination, "name" | "notebookUrl">>
-): Promise<{ settings: AppSettings; addedCount: number; skippedCount: number }> {
+export async function replaceDestinations(inputs: Array<Pick<Destination, "name" | "notebookUrl">>): Promise<AppSettings> {
   const settings = await loadSettings();
   const now = new Date().toISOString();
-  const existingUrls = new Set(settings.destinations.map((destination) => destination.notebookUrl));
-  const pendingUrls = new Set<string>();
-  const additions: Destination[] = [];
-  let skippedCount = 0;
+  const existingByUrl = new Map(
+    settings.destinations.map((destination) => [destination.notebookUrl, destination])
+  );
+  const destinationUrls = new Set<string>();
+  const destinations: Destination[] = [];
 
   for (const input of inputs) {
-    if (existingUrls.has(input.notebookUrl) || pendingUrls.has(input.notebookUrl)) {
-      skippedCount += 1;
+    if (destinationUrls.has(input.notebookUrl)) {
       continue;
     }
 
-    pendingUrls.add(input.notebookUrl);
-    additions.push({
-      id: crypto.randomUUID(),
-      name: input.name,
-      notebookUrl: input.notebookUrl,
-      createdAt: now,
-      updatedAt: now
-    });
+    destinationUrls.add(input.notebookUrl);
+    const existing = existingByUrl.get(input.notebookUrl);
+    destinations.push(
+      existing
+        ? {
+            ...existing,
+            name: input.name,
+            updatedAt: existing.name === input.name ? existing.updatedAt : now
+          }
+        : {
+            id: crypto.randomUUID(),
+            name: input.name,
+            notebookUrl: input.notebookUrl,
+            createdAt: now,
+            updatedAt: now
+          }
+    );
   }
 
+  const destinationIds = new Set(destinations.map((destination) => destination.id));
   const nextSettings = {
     ...settings,
-    destinations: sortDestinations([...additions, ...settings.destinations])
-  };
-
-  await saveSettings(nextSettings);
-  return {
-    settings: nextSettings,
-    addedCount: additions.length,
-    skippedCount
-  };
-}
-
-export async function removeDestination(id: string): Promise<AppSettings> {
-  const settings = await loadSettings();
-  const nextSettings = {
-    ...settings,
-    destinations: settings.destinations.filter((destination) => destination.id !== id),
-    selectedDestinationIds: settings.selectedDestinationIds.filter((destinationId) => destinationId !== id)
+    destinations: sortDestinations(destinations),
+    selectedDestinationIds: settings.selectedDestinationIds.filter((destinationId) =>
+      destinationIds.has(destinationId)
+    )
   };
 
   await saveSettings(nextSettings);
@@ -116,9 +104,15 @@ export async function rememberSelectedDestinations(ids: string[]): Promise<AppSe
   return nextSettings;
 }
 
-export async function rememberDailyDestinationEnabled(enabled: boolean): Promise<AppSettings> {
+export async function rememberPopupTargetSettings(
+  input: Pick<AppSettings, "dailyDestinationEnabled" | "newNotebookEnabled">
+): Promise<AppSettings> {
   const settings = await loadSettings();
-  const nextSettings = { ...settings, dailyDestinationEnabled: enabled };
+  const nextSettings = {
+    ...settings,
+    dailyDestinationEnabled: input.dailyDestinationEnabled,
+    newNotebookEnabled: input.newNotebookEnabled
+  };
 
   await saveSettings(nextSettings);
   return nextSettings;
@@ -147,12 +141,70 @@ function normalizeSettings(value: unknown): AppSettings {
   return {
     destinations: sortDestinations(destinations),
     selectedDestinationIds,
-    dailyDestinationEnabled: value.dailyDestinationEnabled === true
+    dailyDestinationEnabled: value.dailyDestinationEnabled === true,
+    newNotebookEnabled: value.newNotebookEnabled === true
   };
 }
 
+async function loadSettingsFromStorage(): Promise<AppSettings> {
+  const localSettings = await getStorageValue(chrome.storage.local);
+
+  if (localSettings !== undefined) {
+    return normalizeSettings(localSettings);
+  }
+
+  const syncSettings = await getStorageValue(chrome.storage.sync);
+  const settings = normalizeSettings(syncSettings);
+
+  await saveSettings(settings);
+  return settings;
+}
+
+function getStorageValue(area: chrome.storage.StorageArea): Promise<unknown | undefined> {
+  return new Promise((resolve, reject) => {
+    area.get(STORAGE_KEY, (items) => {
+      const error = chrome.runtime.lastError;
+
+      if (error) {
+        reject(new Error(error.message));
+        return;
+      }
+
+      resolve(items[STORAGE_KEY]);
+    });
+  });
+}
+
+function setStorageValue(area: chrome.storage.StorageArea, settings: AppSettings): Promise<void> {
+  return new Promise((resolve, reject) => {
+    area.set({ [STORAGE_KEY]: settings }, () => {
+      const error = chrome.runtime.lastError;
+
+      if (error) {
+        reject(new Error(error.message));
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
 function sortDestinations(destinations: Destination[]): Destination[] {
-  return [...destinations].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  return [...destinations].sort(compareDestinations);
+}
+
+function compareDestinations(a: Destination, b: Destination): number {
+  const nameComparison = a.name.localeCompare(b.name, "ja", {
+    numeric: true,
+    sensitivity: "base"
+  });
+
+  if (nameComparison !== 0) {
+    return nameComparison;
+  }
+
+  return a.notebookUrl.localeCompare(b.notebookUrl);
 }
 
 function isDestination(value: unknown): value is Destination {

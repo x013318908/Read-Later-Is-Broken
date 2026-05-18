@@ -7,58 +7,38 @@
   </head>
   <body>
     <main id="app" class="popup-shell">
-      <section class="hero">
-        <p class="product">Read Later Is Broken</p>
-        <h1>「あとで読む」は読まれない。</h1>
-        <p class="copy">まず聴き、つぎに問う。</p>
-      </section>
-
-      <section class="source-panel" aria-labelledby="source-heading">
-        <div class="section-header">
-          <h2 id="source-heading">現在のページ</h2>
-          <span id="source-status" class="status-pill">取得中</span>
-        </div>
-        <p id="page-title" class="page-title">Loading current tab...</p>
-        <p id="page-url" class="page-url"></p>
-      </section>
-
       <form id="send-form" class="send-form">
+        <div class="action-row">
+          <button id="send-button" type="submit">NotebookLM に追加</button>
+        </div>
+
         <fieldset>
-          <legend>保存先</legend>
+          <legend>追加先</legend>
 
-          <label class="choice-row">
-            <input type="radio" name="mode" value="existing" checked />
-            <span>
-              <strong>登録済みノートブック</strong>
-              <small>手動登録した1つ以上のノートブックへURLを追加します</small>
-            </span>
-          </label>
+          <div class="destination-toolbar">
+            <input id="destination-search" type="search" aria-label="ノートブック検索" placeholder="ノートブックを検索" />
+            <button id="refresh-notebooks-button" type="button" class="secondary-button small">一覧を更新</button>
+          </div>
 
-          <div id="destination-list" class="destination-checklist" aria-label="登録済みノートブック"></div>
+          <div id="destination-list" class="destination-checklist" aria-label="登録済みNotebookLMノートブック"></div>
 
-          <label class="daily-check-row">
-            <input id="daily-destination-enabled" type="checkbox" />
-            <span>
-              <strong>Dailyノートブックにも追加</strong>
-              <small>Daily yyyy-MM-dd を再利用し、なければ作成します</small>
-            </span>
-          </label>
+          <div class="extra-destination-list" aria-label="追加NotebookLMノートブック">
+            <div class="destination-check-row special-destination-row">
+              <input id="new-notebook-enabled" type="checkbox" />
+              <span>
+                <strong>新しいノートブック</strong>
+                <input id="new-title" type="text" aria-label="新規ノートブック名" placeholder="ページタイトル" />
+              </span>
+            </div>
 
-          <label class="choice-row">
-            <input type="radio" name="mode" value="new" />
-            <span>
-              <strong>新しいノートブック</strong>
-              <small>NotebookLM に新規作成し、現在URLを追加します</small>
-            </span>
-          </label>
-
-          <input id="new-title" type="text" aria-label="新規ノートブック名" placeholder="ページタイトル" />
+            <label class="destination-check-row special-destination-row">
+              <input id="daily-destination-enabled" type="checkbox" />
+              <span>
+                <strong id="daily-title">Daily yyyy-MM-dd</strong>
+              </span>
+            </label>
+          </div>
         </fieldset>
-
-        <p class="note">登録済みノートブックでは裏で NotebookLM タブを開いてURLを追加します。Dailyと新規ノートでは NotebookLM にノートブックを作成または再利用してURLを追加します。</p>
-
-        <button id="send-button" type="submit">NotebookLM に追加</button>
-        <button id="options-button" type="button" class="secondary-button">保存先を管理</button>
       </form>
 
       <p id="message" class="message" role="status"></p>
