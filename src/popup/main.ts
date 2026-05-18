@@ -1,7 +1,12 @@
 import "../styles/app.css";
-import { NOTEBOOKLM_HOME_URL } from "../shared/notebooklm";
-import { loadSettings, rememberSelectedDestinations } from "../shared/storage";
-import type { AppSettings, CurrentPage, Destination, NotebookDirectAddBatchResult } from "../shared/types";
+import { loadSettings, rememberSelectedDestinations, upsertDestination } from "../shared/storage";
+import type {
+  AppSettings,
+  CurrentPage,
+  Destination,
+  NotebookCreateResult,
+  NotebookDirectAddBatchResult
+} from "../shared/types";
 
 const state: {
   settings: AppSettings;
@@ -106,15 +111,36 @@ async function handleSubmit(): Promise<void> {
       return;
     }
 
-    showMessage("URL をコピーしています...", "neutral");
-    await copyToClipboard(state.currentPage.url);
+    const title = elements.newTitle.value.trim() || state.currentPage.title;
+    showMessage("新しいNotebookLMノートブックを作成しています...", "neutral");
+    const response = await chrome.runtime.sendMessage({
+      type: "createNotebookLmNotebook",
+      payload: {
+        title,
+        source: state.currentPage
+      }
+    });
+
+    if (!isNotebookCreateResponse(response)) {
+      throw new Error("新規ノートブック作成の結果を取得できませんでした。");
+    }
+
+    if (!response.ok) {
+      throw new Error(response.error);
+    }
+
+    state.settings = await upsertDestination({
+      name: response.result.title,
+      notebookUrl: response.result.notebookUrl
+    });
+    renderDestinations(state.settings);
 
     await chrome.tabs.create({
-      url: NOTEBOOKLM_HOME_URL,
+      url: response.result.notebookUrl,
       active: true
     });
 
-    showMessage("URL をコピーして NotebookLM を開きました。", "success");
+    showMessage(response.result.message, "success");
   } catch (error) {
     showMessage(getErrorMessage(error), "danger");
   } finally {
@@ -217,7 +243,7 @@ function getSelectedDestinations(): Destination[] {
 
 function updateSendButtonLabel(): void {
   if (getSelectedMode() === "new") {
-    elements.sendButton.textContent = "NotebookLM を開く";
+    elements.sendButton.textContent = "新規ノートブックを作成";
     return;
   }
 
@@ -233,21 +259,6 @@ function getSelectedDestinationIdsFromForm(): string[] {
 
 async function rememberSelectionFromForm(): Promise<void> {
   state.settings = await rememberSelectedDestinations(getSelectedDestinationIdsFromForm());
-}
-
-async function copyToClipboard(value: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(value);
-  } catch {
-    const textArea = document.createElement("textarea");
-    textArea.value = value;
-    textArea.style.position = "fixed";
-    textArea.style.opacity = "0";
-    document.body.append(textArea);
-    textArea.select();
-    document.execCommand("copy");
-    textArea.remove();
-  }
 }
 
 function showMessage(message: string, variant: "neutral" | "success" | "danger"): void {
@@ -267,6 +278,22 @@ function getElement<T extends HTMLElement>(id: string): T {
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "予期しないエラーが発生しました。";
+}
+
+function isNotebookCreateResponse(value: unknown): value is
+  | { ok: true; result: NotebookCreateResult }
+  | { ok: false; error: string } {
+  if (!isRecord(value) || typeof value.ok !== "boolean") {
+    return false;
+  }
+
+  return value.ok
+    ? isRecord(value.result) &&
+        typeof value.result.message === "string" &&
+        typeof value.result.ok === "boolean" &&
+        typeof value.result.notebookId === "string" &&
+        typeof value.result.notebookUrl === "string"
+    : typeof value.error === "string";
 }
 
 function isBatchInjectionResponse(value: unknown): value is

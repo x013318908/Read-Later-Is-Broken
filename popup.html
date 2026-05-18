@@ -40,16 +40,16 @@
             <input type="radio" name="mode" value="new" />
             <span>
               <strong>新しいノートブック</strong>
-              <small>NotebookLM を開き、ユーザー操作で作成します</small>
+              <small>NotebookLM に新規作成し、現在URLを追加します</small>
             </span>
           </label>
 
-          <input id="new-title" type="text" aria-label="新規ノートブック名のメモ" placeholder="ページタイトル" />
+          <input id="new-title" type="text" aria-label="新規ノートブック名" placeholder="ページタイトル" />
         </fieldset>
 
-        <p class="note">登録済みノートブックでは裏で NotebookLM タブを開いて順次URLを追加します。新規ノートでは URL をコピーして NotebookLM を開きます。</p>
+        <p class="note">登録済みノートブックでは裏で NotebookLM タブを開いてURLを追加します。新規ノートでは NotebookLM にノートブックを作成してURLを追加します。</p>
 
-        <button id="send-button" type="submit">NotebookLM を開く</button>
+        <button id="send-button" type="submit">NotebookLM に追加</button>
         <button id="options-button" type="button" class="secondary-button">保存先を管理</button>
       </form>
 

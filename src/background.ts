@@ -3,6 +3,8 @@ import type {
   NotebookDirectAddFailure,
   NotebookDirectAddBatchRequest,
   NotebookDirectAddBatchResult,
+  NotebookCreateRequest,
+  NotebookCreateResult,
   NotebookDirectAddRequest,
   NotebookDirectAddResponseKind,
   NotebookDirectAddResult,
@@ -45,6 +47,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (isNotebookCreateMessage(message)) {
+    void handleNotebookCreate(message.payload)
+      .then((result) => sendResponse({ ok: true, result }))
+      .catch((error: unknown) => sendResponse({ ok: false, error: getErrorMessage(error) }));
+
+    return true;
+  }
+
   return false;
 });
 
@@ -80,6 +90,29 @@ async function handleNotebookList(request: NotebookListRequest): Promise<Noteboo
     ok: true,
     notebooks,
     message: `NotebookLMから${notebooks.length}件のノートブックを読み込みました。`,
+    checkedAt
+  };
+}
+
+async function handleNotebookCreate(request: NotebookCreateRequest): Promise<NotebookCreateResult> {
+  const title = request.title.trim() || request.source.title || "Untitled";
+  const authParams = await loadNotebookLmAuthParams(request.authuser);
+  const [createResponse] = await executeNotebookLmRpcs(authParams, [
+    { id: "CCqFvf", args: [title, request.emoji ?? getNotebookEmoji(request.source.url)] }
+  ]);
+  const notebookId = parseNotebookCreateResponse(createResponse);
+  const notebookUrl = buildNotebookUrl(notebookId, request.authuser);
+
+  await addNotebookLmSources(authParams, notebookId, [request.source.url]);
+
+  const checkedAt = new Date().toISOString();
+  return {
+    ok: true,
+    notebookId,
+    notebookUrl,
+    title,
+    source: request.source,
+    message: "新しいNotebookLMノートブックを作成し、URL追加を実行しました。Deep Diveは生成していません。",
     checkedAt
   };
 }
@@ -227,6 +260,35 @@ function parseNotebookListItem(row: unknown, authuser?: string): NotebookListIte
       notebookUrl: buildNotebookUrl(row[2], authuser)
     }
   ];
+}
+
+function parseNotebookCreateResponse(response: NotebookLmRpcResponse | undefined): string {
+  if (!response || response.rpcId !== "CCqFvf" || !Array.isArray(response.data) || typeof response.data[2] !== "string") {
+    throw new Error("NotebookLMの新規ノートブック作成結果を読み込めませんでした。");
+  }
+
+  return response.data[2];
+}
+
+async function addNotebookLmSources(
+  authParams: NotebookLmAuthParams,
+  notebookId: string,
+  sourceUrls: string[]
+): Promise<void> {
+  const sourcePayloads = sourceUrls.map((sourceUrl) =>
+    sourceUrl.includes("youtube.com") ? [null, null, null, null, null, null, null, [sourceUrl]] : [null, null, [sourceUrl]]
+  );
+  const [response] = await executeNotebookLmRpcs(authParams, [
+    { id: "izAoDd", args: [sourcePayloads, notebookId, [2]] }
+  ]);
+
+  if (!response || response.rpcId !== "izAoDd" || !response.data) {
+    throw new Error("NotebookLMノートブックへURLを追加できませんでした。");
+  }
+}
+
+function getNotebookEmoji(sourceUrl: string): string {
+  return sourceUrl.includes("youtube.com") ? "📺" : "📔";
 }
 
 function buildNotebookUrl(notebookId: string, authuser?: string): string {
@@ -710,6 +772,21 @@ function isNotebookListMessage(value: unknown): value is {
     isRecord(value) &&
     value.type === "listNotebookLmNotebooks" &&
     isRecord(value.payload) &&
+    (value.payload.authuser === undefined || typeof value.payload.authuser === "string")
+  );
+}
+
+function isNotebookCreateMessage(value: unknown): value is {
+  type: "createNotebookLmNotebook";
+  payload: NotebookCreateRequest;
+} {
+  return (
+    isRecord(value) &&
+    value.type === "createNotebookLmNotebook" &&
+    isRecord(value.payload) &&
+    typeof value.payload.title === "string" &&
+    isCurrentPage(value.payload.source) &&
+    (value.payload.emoji === undefined || typeof value.payload.emoji === "string") &&
     (value.payload.authuser === undefined || typeof value.payload.authuser === "string")
   );
 }
