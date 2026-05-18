@@ -5,6 +5,8 @@ import type {
   NotebookDirectAddBatchResult,
   NotebookCreateRequest,
   NotebookCreateResult,
+  NotebookDailyAddRequest,
+  NotebookDailyAddResult,
   NotebookDirectAddRequest,
   NotebookDirectAddResponseKind,
   NotebookDirectAddResult,
@@ -49,6 +51,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (isNotebookCreateMessage(message)) {
     void handleNotebookCreate(message.payload)
+      .then((result) => sendResponse({ ok: true, result }))
+      .catch((error: unknown) => sendResponse({ ok: false, error: getErrorMessage(error) }));
+
+    return true;
+  }
+
+  if (isNotebookDailyAddMessage(message)) {
+    void handleNotebookDailyAdd(message.payload)
       .then((result) => sendResponse({ ok: true, result }))
       .catch((error: unknown) => sendResponse({ ok: false, error: getErrorMessage(error) }));
 
@@ -113,6 +123,36 @@ async function handleNotebookCreate(request: NotebookCreateRequest): Promise<Not
     title,
     source: request.source,
     message: "新しいNotebookLMノートブックを作成し、URL追加を実行しました。Deep Diveは生成していません。",
+    checkedAt
+  };
+}
+
+async function handleNotebookDailyAdd(request: NotebookDailyAddRequest): Promise<NotebookDailyAddResult> {
+  const title = getDailyNotebookTitle();
+  const authParams = await loadNotebookLmAuthParams(request.authuser);
+  const [listResponse] = await executeNotebookLmRpcs(authParams, [{ id: "wXbhsf", args: [null, 1] }]);
+  const existingNotebook = selectDailyNotebook(parseNotebookListResponse(listResponse, request.authuser), title);
+  let notebookId = existingNotebook?.notebookId;
+  let created = false;
+
+  if (!notebookId) {
+    const [createResponse] = await executeNotebookLmRpcs(authParams, [{ id: "CCqFvf", args: [title, "📔"] }]);
+    notebookId = parseNotebookCreateResponse(createResponse);
+    created = true;
+  }
+
+  const notebookUrl = buildNotebookUrl(notebookId, request.authuser);
+  await addNotebookLmSources(authParams, notebookId, [request.source.url]);
+
+  const checkedAt = new Date().toISOString();
+  return {
+    ok: true,
+    notebookId,
+    notebookUrl,
+    title,
+    source: request.source,
+    created,
+    message: `Dailyノートブック「${title}」を${created ? "作成" : "再利用"}し、URL追加を実行しました。Deep Diveは生成していません。`,
     checkedAt
   };
 }
@@ -251,15 +291,56 @@ function parseNotebookListItem(row: unknown, authuser?: string): NotebookListIte
 
   const title = typeof row[0] === "string" && row[0].trim() ? row[0].trim() : "Untitled";
   const emoji = typeof row[3] === "string" && row[3].trim() ? row[3].trim() : undefined;
+  const updatedAtMs = parseNotebookUpdatedAtMs(row);
 
   return [
     {
       notebookId: row[2],
       title,
       emoji,
-      notebookUrl: buildNotebookUrl(row[2], authuser)
+      notebookUrl: buildNotebookUrl(row[2], authuser),
+      ...(updatedAtMs === undefined ? {} : { updatedAtMs })
     }
   ];
+}
+
+function parseNotebookUpdatedAtMs(row: unknown[]): number | undefined {
+  const timestampTuple = row[5];
+
+  if (!Array.isArray(timestampTuple)) {
+    return undefined;
+  }
+
+  const rawTimestamp = timestampTuple[1] ?? timestampTuple[0];
+
+  if (typeof rawTimestamp === "number" && Number.isFinite(rawTimestamp)) {
+    return rawTimestamp;
+  }
+
+  if (typeof rawTimestamp === "string") {
+    const parsed = Number.parseInt(rawTimestamp, 10);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
+}
+
+function selectDailyNotebook(notebooks: NotebookListItem[], title: string): NotebookListItem | undefined {
+  return notebooks
+    .filter((notebook) => notebook.title === title)
+    .sort((a, b) => (b.updatedAtMs ?? -1) - (a.updatedAtMs ?? -1))[0];
+}
+
+function getDailyNotebookTitle(date = new Date()): string {
+  return `Daily ${formatLocalDate(date)}`;
+}
+
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear().toString();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
 
 function parseNotebookCreateResponse(response: NotebookLmRpcResponse | undefined): string {
@@ -787,6 +868,19 @@ function isNotebookCreateMessage(value: unknown): value is {
     typeof value.payload.title === "string" &&
     isCurrentPage(value.payload.source) &&
     (value.payload.emoji === undefined || typeof value.payload.emoji === "string") &&
+    (value.payload.authuser === undefined || typeof value.payload.authuser === "string")
+  );
+}
+
+function isNotebookDailyAddMessage(value: unknown): value is {
+  type: "addSourceToDailyNotebook";
+  payload: NotebookDailyAddRequest;
+} {
+  return (
+    isRecord(value) &&
+    value.type === "addSourceToDailyNotebook" &&
+    isRecord(value.payload) &&
+    isCurrentPage(value.payload.source) &&
     (value.payload.authuser === undefined || typeof value.payload.authuser === "string")
   );
 }

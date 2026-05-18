@@ -1,10 +1,16 @@
 import "../styles/app.css";
-import { loadSettings, rememberSelectedDestinations, upsertDestination } from "../shared/storage";
+import {
+  loadSettings,
+  rememberDailyDestinationEnabled,
+  rememberSelectedDestinations,
+  upsertDestination
+} from "../shared/storage";
 import type {
   AppSettings,
   CurrentPage,
   Destination,
   NotebookCreateResult,
+  NotebookDailyAddResult,
   NotebookDirectAddBatchResult
 } from "../shared/types";
 
@@ -12,7 +18,7 @@ const state: {
   settings: AppSettings;
   currentPage?: CurrentPage;
 } = {
-  settings: { destinations: [], selectedDestinationIds: [] }
+  settings: { destinations: [], selectedDestinationIds: [], dailyDestinationEnabled: false }
 };
 
 const elements = {
@@ -21,6 +27,7 @@ const elements = {
   pageUrl: getElement<HTMLParagraphElement>("page-url"),
   form: getElement<HTMLFormElement>("send-form"),
   destinationList: getElement<HTMLDivElement>("destination-list"),
+  dailyDestinationEnabled: getElement<HTMLInputElement>("daily-destination-enabled"),
   newTitle: getElement<HTMLInputElement>("new-title"),
   sendButton: getElement<HTMLButtonElement>("send-button"),
   optionsButton: getElement<HTMLButtonElement>("options-button"),
@@ -43,6 +50,15 @@ async function initialize(): Promise<void> {
 
   document.querySelectorAll<HTMLInputElement>("input[name='mode']").forEach((input) => {
     input.addEventListener("change", updateSendButtonLabel);
+  });
+
+  elements.dailyDestinationEnabled.addEventListener("change", () => {
+    if (elements.dailyDestinationEnabled.checked) {
+      selectMode("existing");
+    }
+
+    void rememberDailySettingFromForm();
+    updateSendButtonLabel();
   });
 
   try {
@@ -68,14 +84,15 @@ async function handleSubmit(): Promise<void> {
 
   const mode = getSelectedMode();
   const destinations = mode === "existing" ? getSelectedDestinations() : [];
+  const dailyEnabled = mode === "existing" && elements.dailyDestinationEnabled.checked;
 
-  if (mode === "existing" && state.settings.destinations.length === 0) {
+  if (mode === "existing" && state.settings.destinations.length === 0 && !dailyEnabled) {
     showMessage("保存先ノートブックを登録してください。", "danger");
     chrome.runtime.openOptionsPage();
     return;
   }
 
-  if (mode === "existing" && destinations.length === 0) {
+  if (mode === "existing" && destinations.length === 0 && !dailyEnabled) {
     showMessage("追加先ノートブックを1つ以上選択してください。", "danger");
     return;
   }
@@ -83,31 +100,60 @@ async function handleSubmit(): Promise<void> {
   elements.sendButton.disabled = true;
 
   try {
-    if (destinations.length > 0) {
+    if (mode === "existing") {
       state.settings = await rememberSelectedDestinations(destinations.map((destination) => destination.id));
-      showMessage(`NotebookLM にURLを追加しています... (${destinations.length}件)`, "neutral");
-      const response = await chrome.runtime.sendMessage({
-        type: "addSourcesToNotebooks",
-        payload: {
-          source: state.currentPage,
-          targets: destinations.map((destination) => ({
-            destinationId: destination.id,
-            name: destination.name,
-            notebookUrl: destination.notebookUrl
-          }))
+      state.settings = await rememberDailyDestinationEnabled(dailyEnabled);
+      let dailyResult: NotebookDailyAddResult | undefined;
+
+      if (destinations.length > 0) {
+        showMessage(`NotebookLM にURLを追加しています... (${destinations.length}件)`, "neutral");
+        const response = await chrome.runtime.sendMessage({
+          type: "addSourcesToNotebooks",
+          payload: {
+            source: state.currentPage,
+            targets: destinations.map((destination) => ({
+              destinationId: destination.id,
+              name: destination.name,
+              notebookUrl: destination.notebookUrl
+            }))
+          }
+        });
+
+        if (!isBatchInjectionResponse(response)) {
+          throw new Error("URL追加の結果を取得できませんでした。");
         }
-      });
 
-      if (!isBatchInjectionResponse(response)) {
-        throw new Error("URL追加の結果を取得できませんでした。");
+        if (!response.ok) {
+          throw new Error(response.error);
+        }
       }
 
-      if (!response.ok) {
-        throw new Error(response.error);
+      if (dailyEnabled) {
+        showMessage("Dailyノートブックを確認してURLを追加しています...", "neutral");
+        const response = await chrome.runtime.sendMessage({
+          type: "addSourceToDailyNotebook",
+          payload: {
+            source: state.currentPage
+          }
+        });
+
+        if (!isDailyAddResponse(response)) {
+          throw new Error("Dailyノートブック追加の結果を取得できませんでした。");
+        }
+
+        if (!response.ok) {
+          throw new Error(response.error);
+        }
+
+        dailyResult = response.result;
+        state.settings = await upsertDestination({
+          name: dailyResult.title,
+          notebookUrl: dailyResult.notebookUrl
+        });
       }
 
-      showMessage(response.result.message, "neutral");
       renderDestinations(state.settings);
+      showMessage(buildExistingModeMessage(destinations.length, dailyResult), "neutral");
       return;
     }
 
@@ -171,13 +217,14 @@ function renderCurrentPage(currentPage: CurrentPage): void {
 
 function renderDestinations(settings: AppSettings): void {
   elements.destinationList.replaceChildren();
+  elements.dailyDestinationEnabled.checked = settings.dailyDestinationEnabled;
 
   if (settings.destinations.length === 0) {
     const empty = document.createElement("div");
     empty.className = "destination-check-empty";
     empty.textContent = "保存先が未登録です";
     elements.destinationList.append(empty);
-    selectMode("new");
+    selectMode(settings.dailyDestinationEnabled ? "existing" : "new");
     updateSendButtonLabel();
     return;
   }
@@ -221,7 +268,7 @@ function getInitialSelectedDestinationIds(settings: AppSettings): string[] {
     return selectedIds;
   }
 
-  return settings.destinations[0] ? [settings.destinations[0].id] : [];
+  return [];
 }
 
 function getSelectedMode(): "existing" | "new" {
@@ -248,7 +295,9 @@ function updateSendButtonLabel(): void {
   }
 
   const count = getSelectedDestinationIdsFromForm().length;
-  elements.sendButton.textContent = count > 0 ? `NotebookLM に追加 (${count})` : "NotebookLM に追加";
+  const dailyCount = elements.dailyDestinationEnabled.checked ? 1 : 0;
+  const total = count + dailyCount;
+  elements.sendButton.textContent = total > 0 ? `NotebookLM に追加 (${total})` : "NotebookLM に追加";
 }
 
 function getSelectedDestinationIdsFromForm(): string[] {
@@ -259,6 +308,23 @@ function getSelectedDestinationIdsFromForm(): string[] {
 
 async function rememberSelectionFromForm(): Promise<void> {
   state.settings = await rememberSelectedDestinations(getSelectedDestinationIdsFromForm());
+}
+
+async function rememberDailySettingFromForm(): Promise<void> {
+  state.settings = await rememberDailyDestinationEnabled(elements.dailyDestinationEnabled.checked);
+}
+
+function buildExistingModeMessage(existingCount: number, dailyResult?: NotebookDailyAddResult): string {
+  if (dailyResult && existingCount > 0) {
+    return `NotebookLMへの追加を実行しました（登録済み${existingCount}件 + Daily）。NotebookLM側でソース一覧を確認してください。Deep Diveは生成していません。`;
+  }
+
+  if (dailyResult) {
+    const action = dailyResult.created ? "作成" : "再利用";
+    return `Dailyノートブック「${dailyResult.title}」を${action}し、URL追加を実行しました。Deep Diveは生成していません。`;
+  }
+
+  return `NotebookLMへの追加を実行しました（${existingCount}件）。NotebookLM側でソース一覧を確認してください。Deep Diveは生成していません。`;
 }
 
 function showMessage(message: string, variant: "neutral" | "success" | "danger"): void {
@@ -308,6 +374,24 @@ function isBatchInjectionResponse(value: unknown): value is
         typeof value.result.message === "string" &&
         typeof value.result.ok === "boolean" &&
         typeof value.result.attemptedCount === "number"
+    : typeof value.error === "string";
+}
+
+function isDailyAddResponse(value: unknown): value is
+  | { ok: true; result: NotebookDailyAddResult }
+  | { ok: false; error: string } {
+  if (!isRecord(value) || typeof value.ok !== "boolean") {
+    return false;
+  }
+
+  return value.ok
+    ? isRecord(value.result) &&
+        typeof value.result.message === "string" &&
+        typeof value.result.ok === "boolean" &&
+        typeof value.result.notebookId === "string" &&
+        typeof value.result.notebookUrl === "string" &&
+        typeof value.result.title === "string" &&
+        typeof value.result.created === "boolean"
     : typeof value.error === "string";
 }
 

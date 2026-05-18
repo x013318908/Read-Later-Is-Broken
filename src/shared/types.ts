@@ -9,6 +9,7 @@ export interface Destination {
 export interface AppSettings {
   destinations: Destination[];
   selectedDestinationIds: string[];
+  dailyDestinationEnabled: boolean;
 }
 
 export interface CurrentPage {
@@ -49,6 +50,22 @@ export interface NotebookCreateResult {
   checkedAt: string;
 }
 
+export interface NotebookDailyAddRequest {
+  source: CurrentPage;
+  authuser?: string;
+}
+
+export interface NotebookDailyAddResult {
+  ok: boolean;
+  notebookId: string;
+  notebookUrl: string;
+  title: string;
+  source: CurrentPage;
+  created: boolean;
+  message: string;
+  checkedAt: string;
+}
+
 export interface NotebookListRequest {
   authuser?: string;
 }
@@ -65,6 +82,7 @@ export interface NotebookListItem {
   title: string;
   emoji?: string;
   notebookUrl: string;
+  updatedAtMs?: number;
 }
 
 export interface NotebookDirectAddResult {

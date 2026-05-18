@@ -249,6 +249,42 @@ legend {
   line-height: 1.45;
 }
 
+.daily-check-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  border: 1px solid rgba(44, 91, 80, 0.18);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: rgba(236, 246, 241, 0.74);
+}
+
+.daily-check-row input {
+  width: 16px;
+  min-height: 16px;
+  margin-top: 4px;
+  accent-color: #2c5b50;
+}
+
+.daily-check-row strong,
+.daily-check-row small {
+  display: block;
+}
+
+.daily-check-row strong {
+  margin-bottom: 2px;
+  color: #25221e;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.daily-check-row small {
+  color: #5e655f;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
 input,
 select {
   width: 100%;

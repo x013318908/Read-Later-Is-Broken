@@ -4,7 +4,8 @@ const STORAGE_KEY = "settings";
 
 const DEFAULT_SETTINGS: AppSettings = {
   destinations: [],
-  selectedDestinationIds: []
+  selectedDestinationIds: [],
+  dailyDestinationEnabled: false
 };
 
 export function loadSettings(): Promise<AppSettings> {
@@ -115,6 +116,14 @@ export async function rememberSelectedDestinations(ids: string[]): Promise<AppSe
   return nextSettings;
 }
 
+export async function rememberDailyDestinationEnabled(enabled: boolean): Promise<AppSettings> {
+  const settings = await loadSettings();
+  const nextSettings = { ...settings, dailyDestinationEnabled: enabled };
+
+  await saveSettings(nextSettings);
+  return nextSettings;
+}
+
 function normalizeSettings(value: unknown): AppSettings {
   if (!isRecord(value)) {
     return DEFAULT_SETTINGS;
@@ -137,7 +146,8 @@ function normalizeSettings(value: unknown): AppSettings {
 
   return {
     destinations: sortDestinations(destinations),
-    selectedDestinationIds
+    selectedDestinationIds,
+    dailyDestinationEnabled: value.dailyDestinationEnabled === true
   };
 }
 
