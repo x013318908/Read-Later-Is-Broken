@@ -7,13 +7,42 @@
   </head>
   <body>
     <main id="app" class="popup-shell">
-      <form id="send-form" class="send-form">
-        <div class="action-row">
-          <button id="send-button" type="submit">NotebookLM に追加</button>
-        </div>
+      <form id="digest-form" class="send-form">
+        <fieldset class="target-group digest-group">
+          <legend>ダイジェスト</legend>
 
-        <fieldset>
-          <legend>追加先</legend>
+          <div class="extra-destination-list" aria-label="ダイジェスト用NotebookLMノートブック">
+            <label class="destination-check-row special-destination-row digest-destination-row">
+              <input id="daily-destination-enabled" type="checkbox" />
+              <span>
+                <strong id="daily-title">Daily yyyy-MM-dd</strong>
+              </span>
+            </label>
+
+            <label class="destination-check-row special-destination-row digest-destination-row">
+              <input id="weekly-destination-enabled" type="checkbox" />
+              <span>
+                <strong id="weekly-title">Weekly yyyy-Www</strong>
+              </span>
+            </label>
+
+            <label class="destination-check-row special-destination-row digest-destination-row">
+              <input id="monthly-destination-enabled" type="checkbox" />
+              <span>
+                <strong id="monthly-title">Monthly yyyy-MM</strong>
+              </span>
+            </label>
+          </div>
+
+          <div class="action-row">
+            <button id="send-button" type="submit">NotebookLM に追加</button>
+          </div>
+        </fieldset>
+      </form>
+
+      <form id="theme-form" class="send-form">
+        <fieldset class="target-group theme-group">
+          <legend>テーマ別</legend>
 
           <div class="destination-toolbar">
             <input id="destination-search" type="search" aria-label="ノートブック検索" placeholder="ノートブックを検索" />
@@ -21,8 +50,9 @@
           </div>
 
           <div id="destination-list" class="destination-checklist" aria-label="登録済みNotebookLMノートブック"></div>
+          <div id="destination-count" class="destination-count" aria-live="polite">ノートブック 0件</div>
 
-          <div class="extra-destination-list" aria-label="追加NotebookLMノートブック">
+          <div class="extra-destination-list" aria-label="テーマ別NotebookLMノートブック">
             <div class="destination-check-row special-destination-row">
               <input id="new-notebook-enabled" type="checkbox" />
               <span>
@@ -30,27 +60,10 @@
                 <input id="new-title" type="text" aria-label="新規ノートブック名" placeholder="ページタイトル" />
               </span>
             </div>
+          </div>
 
-            <label class="destination-check-row special-destination-row">
-              <input id="daily-destination-enabled" type="checkbox" />
-              <span>
-                <strong id="daily-title">Daily yyyy-MM-dd</strong>
-              </span>
-            </label>
-
-            <label class="destination-check-row special-destination-row">
-              <input id="weekly-destination-enabled" type="checkbox" />
-              <span>
-                <strong id="weekly-title">Weekly yyyy-Www</strong>
-              </span>
-            </label>
-
-            <label class="destination-check-row special-destination-row">
-              <input id="monthly-destination-enabled" type="checkbox" />
-              <span>
-                <strong id="monthly-title">Monthly yyyy-MM</strong>
-              </span>
-            </label>
+          <div class="action-row">
+            <button id="theme-send-button" type="submit">NotebookLM に追加</button>
           </div>
         </fieldset>
       </form>

@@ -32,10 +32,12 @@ const state: {
 };
 
 const elements = {
-  form: getElement<HTMLFormElement>("send-form"),
+  digestForm: getElement<HTMLFormElement>("digest-form"),
+  themeForm: getElement<HTMLFormElement>("theme-form"),
   destinationSearch: getElement<HTMLInputElement>("destination-search"),
   refreshNotebooksButton: getElement<HTMLButtonElement>("refresh-notebooks-button"),
   destinationList: getElement<HTMLDivElement>("destination-list"),
+  destinationCount: getElement<HTMLDivElement>("destination-count"),
   dailyDestinationEnabled: getElement<HTMLInputElement>("daily-destination-enabled"),
   dailyTitle: getElement<HTMLElement>("daily-title"),
   weeklyDestinationEnabled: getElement<HTMLInputElement>("weekly-destination-enabled"),
@@ -45,6 +47,7 @@ const elements = {
   newNotebookEnabled: getElement<HTMLInputElement>("new-notebook-enabled"),
   newTitle: getElement<HTMLInputElement>("new-title"),
   sendButton: getElement<HTMLButtonElement>("send-button"),
+  themeSendButton: getElement<HTMLButtonElement>("theme-send-button"),
   message: getElement<HTMLParagraphElement>("message"),
   lastResult: getElement<HTMLParagraphElement>("last-result")
 };
@@ -56,9 +59,14 @@ document.addEventListener("DOMContentLoaded", () => {
 async function initialize(): Promise<void> {
   applyDateNotebookTitles();
 
-  elements.form.addEventListener("submit", (event) => {
+  elements.digestForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    void handleSubmit();
+    void handleDigestSubmit();
+  });
+
+  elements.themeForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void handleThemeSubmit();
   });
 
   elements.refreshNotebooksButton.addEventListener("click", () => {
@@ -102,7 +110,7 @@ async function initialize(): Promise<void> {
     applyCurrentPage(currentPage);
   } catch (error) {
     showMessage(`現在のページを取得できませんでした。${getErrorMessage(error)}`, "danger");
-    elements.sendButton.disabled = true;
+    setSendButtonsDisabled(true);
   }
 }
 
@@ -144,38 +152,70 @@ async function refreshNotebookList(options: { auto?: boolean } = {}): Promise<vo
   }
 }
 
-async function handleSubmit(): Promise<void> {
+async function handleDigestSubmit(): Promise<void> {
+  if (!state.currentPage) {
+    showMessage("現在ページが取得できていません。", "danger");
+    return;
+  }
+
+  const dateNotebookPeriods = getEnabledDateNotebookPeriods();
+
+  if (dateNotebookPeriods.length === 0) {
+    showMessage("ダイジェストの追加先を1つ以上選択してください。", "danger");
+    return;
+  }
+
+  await runNotebookAddJob({
+    startMessage: "ダイジェスト用ノートブックへの追加を開始しました。popupを閉じても続行します。",
+    existingTargets: [],
+    datePeriods: dateNotebookPeriods
+  });
+}
+
+async function handleThemeSubmit(): Promise<void> {
   if (!state.currentPage) {
     showMessage("現在ページが取得できていません。", "danger");
     return;
   }
 
   const destinations = getSelectedDestinations();
-  const dateNotebookPeriods = getEnabledDateNotebookPeriods();
-  const newNotebookEnabled = elements.newNotebookEnabled.checked;
+  const newNotebookTitle = elements.newNotebookEnabled.checked ? elements.newTitle.value : undefined;
 
-  if (destinations.length === 0 && dateNotebookPeriods.length === 0 && !newNotebookEnabled) {
-    showMessage("追加先を1つ以上選択してください。", "danger");
+  if (destinations.length === 0 && newNotebookTitle === undefined) {
+    showMessage("テーマ別の追加先を1つ以上選択してください。", "danger");
     return;
   }
 
-  elements.sendButton.disabled = true;
+  await runNotebookAddJob({
+    startMessage: "テーマ別ノートブックへの追加を開始しました。popupを閉じても続行します。",
+    existingTargets: destinations.map((destination) => ({
+      destinationId: destination.id,
+      name: destination.name,
+      notebookUrl: destination.notebookUrl
+    })),
+    datePeriods: [],
+    newNotebookTitle
+  });
+}
 
+async function runNotebookAddJob(input: {
+  startMessage: string;
+  existingTargets: Array<{ destinationId: string; name: string; notebookUrl: string }>;
+  datePeriods: DateNotebookPeriod[];
+  newNotebookTitle?: string;
+}): Promise<void> {
   try {
+    setSendButtonsDisabled(true);
     state.settings = await rememberSelectedDestinations(getSelectedDestinationIdsFromForm());
     state.settings = await rememberTargetSettingsFromForm();
-    showMessage("NotebookLMへの追加を開始しました。popupを閉じても続行します。", "neutral");
+    showMessage(input.startMessage, "neutral");
     const response = await chrome.runtime.sendMessage({
       type: "runNotebookAddJob",
       payload: {
         source: state.currentPage,
-        existingTargets: destinations.map((destination) => ({
-          destinationId: destination.id,
-          name: destination.name,
-          notebookUrl: destination.notebookUrl
-        })),
-        datePeriods: dateNotebookPeriods,
-        newNotebookTitle: newNotebookEnabled ? elements.newTitle.value : undefined
+        existingTargets: input.existingTargets,
+        datePeriods: input.datePeriods,
+        newNotebookTitle: input.newNotebookTitle
       }
     });
 
@@ -194,7 +234,7 @@ async function handleSubmit(): Promise<void> {
   } catch (error) {
     showMessage(getErrorMessage(error), "danger");
   } finally {
-    elements.sendButton.disabled = false;
+    setSendButtonsDisabled(false);
   }
 }
 
@@ -218,6 +258,7 @@ function applyCurrentPage(currentPage: CurrentPage): void {
 
 function renderDestinations(settings: AppSettings): void {
   elements.destinationList.replaceChildren();
+  elements.destinationCount.textContent = `ノートブック ${settings.destinations.length}件`;
   elements.dailyDestinationEnabled.checked = settings.dailyDestinationEnabled;
   elements.weeklyDestinationEnabled.checked = settings.weeklyDestinationEnabled;
   elements.monthlyDestinationEnabled.checked = settings.monthlyDestinationEnabled;
@@ -314,8 +355,9 @@ function updateSendButtonLabel(): void {
   const existingCount = getSelectedDestinationIdsFromForm().length;
   const dateNotebookCount = getEnabledDateNotebookPeriods().length;
   const newNotebookCount = elements.newNotebookEnabled.checked ? 1 : 0;
-  const total = existingCount + dateNotebookCount + newNotebookCount;
-  elements.sendButton.textContent = total > 0 ? `NotebookLM に追加 (${total})` : "NotebookLM に追加";
+  const themeTotal = existingCount + newNotebookCount;
+  elements.sendButton.textContent = dateNotebookCount > 0 ? `NotebookLM に追加 (${dateNotebookCount})` : "NotebookLM に追加";
+  elements.themeSendButton.textContent = themeTotal > 0 ? `NotebookLM に追加 (${themeTotal})` : "NotebookLM に追加";
 }
 
 function getSelectedDestinationIdsFromForm(): string[] {
@@ -343,6 +385,11 @@ async function rememberTargetSettingsFromForm(): Promise<AppSettings> {
 
 function updateControlState(): void {
   elements.newTitle.disabled = !elements.newNotebookEnabled.checked;
+}
+
+function setSendButtonsDisabled(disabled: boolean): void {
+  elements.sendButton.disabled = disabled;
+  elements.themeSendButton.disabled = disabled;
 }
 
 function renderLastAddStatus(status: LastAddStatus | undefined): void {

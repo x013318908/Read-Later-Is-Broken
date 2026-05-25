@@ -29,7 +29,9 @@ npm run dev
 - 現在ページは popup 表示時に内部で取得し、選択した NotebookLM ノートブックへ追加します。
 - 保存済みの既存ノートブックが空の場合は、popup 表示時に NotebookLM のノートブック一覧を自動取得します。
 - popup の一覧更新ボタンから NotebookLM のノートブック一覧を再取得できます。
-- popup では、NotebookLM の登録済みノートブック、新規ノートブック、Daily、Weekly、Monthly をチェックボックスで複数選択できます。
+- popup は、Daily / Weekly / Monthly へ雑に入れる「ダイジェスト」と、既存ノートブック / 新規ノートブックへ入れる「テーマ別」に分かれています。
+- ダイジェスト側の `NotebookLM に追加` は Daily / Weekly / Monthly だけを対象にします。
+- テーマ別側の `NotebookLM に追加` は登録済みノートブックと新規ノートブックだけを対象にします。
 - 登録済みノートブックのチェックリストはスクロール可能なグループとして表示し、選択した保存先へ NotebookLM タブを裏で最大 3 件ずつ開いて現在ページの URL をソースとして追加します。
 - 登録済みノートブックは名前順で表示し、検索ボックスで絞り込めます。チェック中のノートブックは検索条件に関係なく表示します。
 - Daily / Weekly / Monthly チェック行には、ローカル日付に基づく `Daily yyyy-MM-dd`、`Weekly yyyy-Www`、`Monthly yyyy-MM` を表示し、そのノートブックにも現在ページの URL を追加します。
