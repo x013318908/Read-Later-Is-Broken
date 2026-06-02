@@ -68,7 +68,7 @@ legend {
 
 .destination-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 8px;
   align-items: center;
 }
@@ -136,15 +136,23 @@ legend {
 }
 
 .destination-check-row strong,
+.destination-label,
 .destination-check-row small {
   display: block;
 }
 
-.destination-check-row strong {
-  margin-bottom: 2px;
+.destination-check-row strong,
+.destination-label {
+  margin: 4px 0 2px;
   color: #25221e;
   font-size: 12px;
+  font-weight: 800;
   line-height: 1.35;
+  text-box-trim: trim-both;
+}
+
+.destination-label {
+  cursor: pointer;
 }
 
 .destination-check-row small {

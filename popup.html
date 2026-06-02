@@ -45,8 +45,8 @@
           <legend>テーマ別</legend>
 
           <div class="destination-toolbar">
-            <input id="destination-search" type="search" aria-label="ノートブック検索" placeholder="ノートブックを検索" />
             <button id="refresh-notebooks-button" type="button" class="secondary-button small">一覧を更新</button>
+            <input id="destination-search" type="search" aria-label="ノートブック検索" placeholder="ノートブックを検索" />
           </div>
 
           <div id="destination-list" class="destination-checklist" aria-label="登録済みNotebookLMノートブック"></div>
@@ -56,7 +56,7 @@
             <div class="destination-check-row special-destination-row">
               <input id="new-notebook-enabled" type="checkbox" />
               <span>
-                <strong>新しいノートブック</strong>
+                <label for="new-notebook-enabled" class="destination-label">新しいノートブック</label>
                 <input id="new-title" type="text" aria-label="新規ノートブック名" placeholder="ページタイトル" />
               </span>
             </div>

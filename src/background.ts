@@ -165,10 +165,6 @@ async function handleNotebookAddJob(request: NotebookAddJobRequest): Promise<Not
         name: getNewNotebookDisplayName(result.title),
         notebookUrl: result.notebookUrl
       });
-      await chrome.tabs.create({
-        url: result.notebookUrl,
-        active: true
-      });
     } catch (error) {
       status.items.push({
         kind: "new",
