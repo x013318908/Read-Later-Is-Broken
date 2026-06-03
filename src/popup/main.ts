@@ -3,7 +3,8 @@ import {
   loadSettings,
   rememberPopupTargetSettings,
   rememberSelectedDestinations,
-  replaceDestinations
+  replaceDestinations,
+  upsertDestination
 } from "../shared/storage";
 import type {
   AppSettings,
@@ -12,6 +13,7 @@ import type {
   Destination,
   LastAddStatus,
   NotebookAddJobResult,
+  NotebookCreateResult,
   NotebookListResult
 } from "../shared/types";
 
@@ -25,8 +27,7 @@ const state: {
     selectedDestinationIds: [],
     dailyDestinationEnabled: false,
     weeklyDestinationEnabled: false,
-    monthlyDestinationEnabled: false,
-    newNotebookEnabled: false
+    monthlyDestinationEnabled: false
   },
   searchQuery: ""
 };
@@ -44,8 +45,7 @@ const elements = {
   weeklyTitle: getElement<HTMLElement>("weekly-title"),
   monthlyDestinationEnabled: getElement<HTMLInputElement>("monthly-destination-enabled"),
   monthlyTitle: getElement<HTMLElement>("monthly-title"),
-  newNotebookEnabled: getElement<HTMLInputElement>("new-notebook-enabled"),
-  newTitle: getElement<HTMLInputElement>("new-title"),
+  createNotebookButton: getElement<HTMLButtonElement>("create-notebook-button"),
   sendButton: getElement<HTMLButtonElement>("send-button"),
   themeSendButton: getElement<HTMLButtonElement>("theme-send-button"),
   message: getElement<HTMLParagraphElement>("message"),
@@ -73,20 +73,22 @@ async function initialize(): Promise<void> {
     void refreshNotebookList();
   });
 
+  elements.createNotebookButton.addEventListener("click", () => {
+    void handleCreateNotebook();
+  });
+
   elements.destinationSearch.addEventListener("input", () => {
     state.searchQuery = elements.destinationSearch.value;
-    renderDestinations(state.settings);
+    renderDestinations(state.settings, { selectedFirst: true });
   });
 
   [
     elements.dailyDestinationEnabled,
     elements.weeklyDestinationEnabled,
-    elements.monthlyDestinationEnabled,
-    elements.newNotebookEnabled
+    elements.monthlyDestinationEnabled
   ].forEach((input) => {
     input.addEventListener("change", () => {
       void rememberTargetSettingsFromForm();
-      updateControlState();
       updateSendButtonLabel();
     });
   });
@@ -107,49 +109,75 @@ async function initialize(): Promise<void> {
   try {
     const currentPage = await getCurrentPage();
     state.currentPage = currentPage;
-    applyCurrentPage(currentPage);
   } catch (error) {
     showMessage(`現在のページを取得できませんでした。${getErrorMessage(error)}`, "danger");
     setSendButtonsDisabled(true);
   }
 }
 
-async function refreshNotebookList(options: { auto?: boolean } = {}): Promise<void> {
+async function refreshNotebookList(options: {
+  auto?: boolean;
+  preserveDestinations?: Destination[];
+  startMessage?: string;
+  completeMessage?: string;
+} = {}): Promise<void> {
   elements.refreshNotebooksButton.disabled = true;
   showMessage(
-    options.auto
-      ? "NotebookLMのノートブック一覧を読み込んでいます。"
-      : "NotebookLMのノートブック一覧を更新しています。",
+    options.startMessage ??
+      (options.auto
+        ? "NotebookLMのノートブック一覧を読み込んでいます。"
+        : "NotebookLMのノートブック一覧を更新しています。"),
     "neutral"
   );
 
   try {
-    const response = await chrome.runtime.sendMessage({
-      type: "listNotebookLmNotebooks",
-      payload: {}
-    });
-
-    if (!isNotebookListResponse(response)) {
-      throw new Error("ノートブック一覧の取得結果を読めませんでした。");
-    }
-
-    if (!response.ok) {
-      throw new Error(response.error);
-    }
-
-    state.settings = await replaceDestinations(
-      response.result.notebooks.map((notebook) => ({
-        name: formatNotebookName(notebook),
-        notebookUrl: notebook.notebookUrl
-      }))
-    );
-    renderDestinations(state.settings);
-    showMessage(`NotebookLMから${response.result.notebooks.length}件を読み込みました。`, "neutral");
+    const result = await syncNotebookList(options.preserveDestinations ?? []);
+    state.settings = result.settings;
+    renderDestinations(state.settings, { selectedFirst: true });
+    showMessage(options.completeMessage ?? `NotebookLMから${result.notebookCount}件を読み込みました。`, "neutral");
   } catch (error) {
     showMessage(getErrorMessage(error), "danger");
   } finally {
     elements.refreshNotebooksButton.disabled = false;
   }
+}
+
+async function syncNotebookList(preserveDestinations: Destination[] = []): Promise<{
+  settings: AppSettings;
+  notebookCount: number;
+}> {
+  const response = await chrome.runtime.sendMessage({
+    type: "listNotebookLmNotebooks",
+    payload: {}
+  });
+
+  if (!isNotebookListResponse(response)) {
+    throw new Error("ノートブック一覧の取得結果を読めませんでした。");
+  }
+
+  if (!response.ok) {
+    throw new Error(response.error);
+  }
+
+  const notebookInputs = response.result.notebooks.map((notebook) => ({
+    name: formatNotebookName(notebook),
+    notebookUrl: notebook.notebookUrl
+  }));
+  const notebookUrls = new Set(notebookInputs.map((notebook) => notebook.notebookUrl));
+
+  for (const destination of preserveDestinations) {
+    if (!notebookUrls.has(destination.notebookUrl)) {
+      notebookInputs.push({
+        name: destination.name,
+        notebookUrl: destination.notebookUrl
+      });
+    }
+  }
+
+  return {
+    settings: await replaceDestinations(notebookInputs),
+    notebookCount: response.result.notebooks.length
+  };
 }
 
 async function handleDigestSubmit(): Promise<void> {
@@ -179,9 +207,8 @@ async function handleThemeSubmit(): Promise<void> {
   }
 
   const destinations = getSelectedDestinations();
-  const newNotebookTitle = elements.newNotebookEnabled.checked ? elements.newTitle.value : undefined;
 
-  if (destinations.length === 0 && newNotebookTitle === undefined) {
+  if (destinations.length === 0) {
     showMessage("テーマ別の追加先を1つ以上選択してください。", "danger");
     return;
   }
@@ -193,16 +220,70 @@ async function handleThemeSubmit(): Promise<void> {
       name: destination.name,
       notebookUrl: destination.notebookUrl
     })),
-    datePeriods: [],
-    newNotebookTitle
+    datePeriods: []
   });
+}
+
+async function handleCreateNotebook(): Promise<void> {
+  const title = elements.destinationSearch.value;
+  const selectedIds = getSelectedDestinationIdsFromForm();
+
+  elements.createNotebookButton.disabled = true;
+  elements.refreshNotebooksButton.disabled = true;
+  showMessage("NotebookLMにノートブックを作成しています。", "neutral");
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "createNotebookLmNotebook",
+      payload: {
+        title
+      }
+    });
+
+    if (!isNotebookCreateResponse(response)) {
+      throw new Error("新規ノートブックの作成結果を読めませんでした。");
+    }
+
+    if (!response.ok) {
+      throw new Error(response.error);
+    }
+
+    const optimisticSettings = await upsertDestination({
+      name: getNewNotebookDisplayName(response.result.title),
+      notebookUrl: response.result.notebookUrl
+    });
+    const createdDestination = optimisticSettings.destinations.find(
+      (destination) => destination.notebookUrl === response.result.notebookUrl
+    );
+
+    state.settings = createdDestination
+      ? await rememberSelectedDestinations([...selectedIds, createdDestination.id])
+      : optimisticSettings;
+    renderDestinations(state.settings, { selectedFirst: true });
+    showMessage("ノートブックを作成しました。一覧を更新しています。", "neutral");
+
+    if (createdDestination) {
+      try {
+        const result = await syncNotebookList([createdDestination]);
+        state.settings = result.settings;
+        renderDestinations(state.settings, { selectedFirst: true });
+        showMessage("ノートブックを作成しました。", "success");
+      } catch (error) {
+        showMessage(`ノートブックを作成しました。一覧更新は失敗しました: ${getErrorMessage(error)}`, "danger");
+      }
+    }
+  } catch (error) {
+    showMessage(getErrorMessage(error), "danger");
+  } finally {
+    elements.createNotebookButton.disabled = false;
+    elements.refreshNotebooksButton.disabled = false;
+  }
 }
 
 async function runNotebookAddJob(input: {
   startMessage: string;
   existingTargets: Array<{ destinationId: string; name: string; notebookUrl: string }>;
   datePeriods: DateNotebookPeriod[];
-  newNotebookTitle?: string;
 }): Promise<void> {
   try {
     setSendButtonsDisabled(true);
@@ -214,8 +295,7 @@ async function runNotebookAddJob(input: {
       payload: {
         source: state.currentPage,
         existingTargets: input.existingTargets,
-        datePeriods: input.datePeriods,
-        newNotebookTitle: input.newNotebookTitle
+        datePeriods: input.datePeriods
       }
     });
 
@@ -251,38 +331,35 @@ async function getCurrentPage(): Promise<CurrentPage> {
   };
 }
 
-function applyCurrentPage(currentPage: CurrentPage): void {
-  elements.newTitle.value = currentPage.title;
-  applyDateNotebookTitles();
-}
-
-function renderDestinations(settings: AppSettings): void {
+function renderDestinations(settings: AppSettings, options: { selectedFirst?: boolean } = {}): void {
   elements.destinationList.replaceChildren();
   elements.destinationCount.textContent = `ノートブック ${settings.destinations.length}件`;
   elements.dailyDestinationEnabled.checked = settings.dailyDestinationEnabled;
   elements.weeklyDestinationEnabled.checked = settings.weeklyDestinationEnabled;
   elements.monthlyDestinationEnabled.checked = settings.monthlyDestinationEnabled;
-  elements.newNotebookEnabled.checked = settings.newNotebookEnabled;
 
   if (settings.destinations.length === 0) {
     const empty = document.createElement("div");
     empty.className = "destination-check-empty";
     empty.textContent = "保存先が未登録です";
     elements.destinationList.append(empty);
-    updateControlState();
     updateSendButtonLabel();
     return;
   }
 
   const selectedIds = new Set(getInitialSelectedDestinationIds(settings));
-  const visibleDestinations = getVisibleDestinations(settings.destinations, selectedIds, state.searchQuery);
+  const visibleDestinations = getVisibleDestinations(
+    settings.destinations,
+    selectedIds,
+    state.searchQuery,
+    options.selectedFirst === true
+  );
 
   if (visibleDestinations.length === 0) {
     const empty = document.createElement("div");
     empty.className = "destination-check-empty";
     empty.textContent = "一致するノートブックはありません";
     elements.destinationList.append(empty);
-    updateControlState();
     updateSendButtonLabel();
     return;
   }
@@ -297,7 +374,6 @@ function renderDestinations(settings: AppSettings): void {
     checkbox.checked = selectedIds.has(destination.id);
     checkbox.addEventListener("change", () => {
       void rememberSelectionAndTargetSettingsFromForm();
-      updateControlState();
       updateSendButtonLabel();
     });
 
@@ -311,7 +387,6 @@ function renderDestinations(settings: AppSettings): void {
     elements.destinationList.append(label);
   }
 
-  updateControlState();
   updateSendButtonLabel();
 }
 
@@ -329,16 +404,37 @@ function getInitialSelectedDestinationIds(settings: AppSettings): string[] {
 function getVisibleDestinations(
   destinations: Destination[],
   selectedIds: Set<string>,
-  searchQuery: string
+  searchQuery: string,
+  selectedFirst: boolean
 ): Destination[] {
   const normalizedQuery = normalizeSearchText(searchQuery);
+  const visibleDestinations = normalizedQuery
+    ? destinations.filter((destination) => {
+        return selectedIds.has(destination.id) || normalizeSearchText(destination.name).includes(normalizedQuery);
+      })
+    : destinations;
 
-  if (!normalizedQuery) {
-    return destinations;
-  }
+  return selectedFirst ? sortDestinationsForDisplay(visibleDestinations, selectedIds) : visibleDestinations;
+}
 
-  return destinations.filter((destination) => {
-    return selectedIds.has(destination.id) || normalizeSearchText(destination.name).includes(normalizedQuery);
+function sortDestinationsForDisplay(destinations: Destination[], selectedIds: Set<string>): Destination[] {
+  return [...destinations].sort((a, b) => {
+    const selectedComparison = Number(selectedIds.has(b.id)) - Number(selectedIds.has(a.id));
+
+    if (selectedComparison !== 0) {
+      return selectedComparison;
+    }
+
+    const nameComparison = a.name.localeCompare(b.name, "ja", {
+      numeric: true,
+      sensitivity: "base"
+    });
+
+    if (nameComparison !== 0) {
+      return nameComparison;
+    }
+
+    return a.notebookUrl.localeCompare(b.notebookUrl);
   });
 }
 
@@ -354,10 +450,8 @@ function getSelectedDestinations(): Destination[] {
 function updateSendButtonLabel(): void {
   const existingCount = getSelectedDestinationIdsFromForm().length;
   const dateNotebookCount = getEnabledDateNotebookPeriods().length;
-  const newNotebookCount = elements.newNotebookEnabled.checked ? 1 : 0;
-  const themeTotal = existingCount + newNotebookCount;
   elements.sendButton.textContent = dateNotebookCount > 0 ? `NotebookLM に追加 (${dateNotebookCount})` : "NotebookLM に追加";
-  elements.themeSendButton.textContent = themeTotal > 0 ? `NotebookLM に追加 (${themeTotal})` : "NotebookLM に追加";
+  elements.themeSendButton.textContent = existingCount > 0 ? `NotebookLM に追加 (${existingCount})` : "NotebookLM に追加";
 }
 
 function getSelectedDestinationIdsFromForm(): string[] {
@@ -375,16 +469,11 @@ async function rememberTargetSettingsFromForm(): Promise<AppSettings> {
   const nextSettings = await rememberPopupTargetSettings({
     dailyDestinationEnabled: elements.dailyDestinationEnabled.checked,
     weeklyDestinationEnabled: elements.weeklyDestinationEnabled.checked,
-    monthlyDestinationEnabled: elements.monthlyDestinationEnabled.checked,
-    newNotebookEnabled: elements.newNotebookEnabled.checked
+    monthlyDestinationEnabled: elements.monthlyDestinationEnabled.checked
   });
   state.settings = nextSettings;
 
   return nextSettings;
-}
-
-function updateControlState(): void {
-  elements.newTitle.disabled = !elements.newNotebookEnabled.checked;
 }
 
 function setSendButtonsDisabled(disabled: boolean): void {
@@ -482,6 +571,10 @@ function formatNotebookName(notebook: NotebookListResult["notebooks"][number]): 
   return notebook.emoji ? `${notebook.emoji} ${notebook.title}` : notebook.title;
 }
 
+function getNewNotebookDisplayName(title: string): string {
+  return title.trim() || "新しいノートブック";
+}
+
 function showMessage(message: string, variant: "neutral" | "success" | "danger"): void {
   elements.message.textContent = message;
   elements.message.dataset.variant = variant;
@@ -510,6 +603,24 @@ function isAddJobResponse(value: unknown): value is
 
   return value.ok
     ? isRecord(value.result) && isLastAddStatus(value.result.status)
+    : typeof value.error === "string";
+}
+
+function isNotebookCreateResponse(value: unknown): value is
+  | { ok: true; result: NotebookCreateResult }
+  | { ok: false; error: string } {
+  if (!isRecord(value) || typeof value.ok !== "boolean") {
+    return false;
+  }
+
+  return value.ok
+    ? isRecord(value.result) &&
+        typeof value.result.ok === "boolean" &&
+        typeof value.result.notebookId === "string" &&
+        typeof value.result.notebookUrl === "string" &&
+        typeof value.result.title === "string" &&
+        typeof value.result.message === "string" &&
+        typeof value.result.checkedAt === "string"
     : typeof value.error === "string";
 }
 

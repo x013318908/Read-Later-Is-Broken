@@ -12,7 +12,6 @@ export interface AppSettings {
   dailyDestinationEnabled: boolean;
   weeklyDestinationEnabled: boolean;
   monthlyDestinationEnabled: boolean;
-  newNotebookEnabled: boolean;
   lastAddStatus?: LastAddStatus;
 }
 
@@ -23,7 +22,7 @@ export interface CurrentPage {
 
 export type DateNotebookPeriod = "daily" | "weekly" | "monthly";
 
-export type AddJobTargetKind = "existing" | DateNotebookPeriod | "new";
+export type AddJobTargetKind = "existing" | DateNotebookPeriod;
 
 export interface AddJobStatusItem {
   kind: AddJobTargetKind;
@@ -47,7 +46,6 @@ export interface NotebookAddJobRequest {
   source: CurrentPage;
   existingTargets: NotebookDirectAddTarget[];
   datePeriods: DateNotebookPeriod[];
-  newNotebookTitle?: string;
 }
 
 export interface NotebookAddJobResult {
@@ -73,7 +71,6 @@ export interface NotebookDirectAddBatchRequest {
 export interface NotebookCreateRequest {
   title: string;
   emoji?: string;
-  source: CurrentPage;
   authuser?: string;
 }
 
@@ -82,7 +79,6 @@ export interface NotebookCreateResult {
   notebookId: string;
   notebookUrl: string;
   title: string;
-  source: CurrentPage;
   message: string;
   checkedAt: string;
 }

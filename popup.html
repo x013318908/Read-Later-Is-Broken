@@ -46,21 +46,20 @@
 
           <div class="destination-toolbar">
             <button id="refresh-notebooks-button" type="button" class="secondary-button small">一覧を更新</button>
-            <input id="destination-search" type="search" aria-label="ノートブック検索" placeholder="ノートブックを検索" />
+          </div>
+
+          <div class="notebook-create-toolbar">
+            <input
+              id="destination-search"
+              type="search"
+              aria-label="ノートブック検索・新規ノートブック名"
+              placeholder="ノートブックを検索 / 新規名"
+            />
+            <button id="create-notebook-button" type="button" class="secondary-button small">作成</button>
           </div>
 
           <div id="destination-list" class="destination-checklist" aria-label="登録済みNotebookLMノートブック"></div>
           <div id="destination-count" class="destination-count" aria-live="polite">ノートブック 0件</div>
-
-          <div class="extra-destination-list" aria-label="テーマ別NotebookLMノートブック">
-            <div class="destination-check-row special-destination-row">
-              <input id="new-notebook-enabled" type="checkbox" />
-              <span>
-                <label for="new-notebook-enabled" class="destination-label">新しいノートブック</label>
-                <input id="new-title" type="text" aria-label="新規ノートブック名" placeholder="ページタイトル" />
-              </span>
-            </div>
-          </div>
 
           <div class="action-row">
             <button id="theme-send-button" type="submit">NotebookLM に追加</button>

@@ -148,35 +148,6 @@ async function handleNotebookAddJob(request: NotebookAddJobRequest): Promise<Not
     await persistStatus();
   }
 
-  if (request.newNotebookTitle !== undefined) {
-    try {
-      const result = await handleNotebookCreate({
-        title: request.newNotebookTitle,
-        source: request.source
-      });
-      status.items.push({
-        kind: "new",
-        name: getNewNotebookDisplayName(result.title),
-        ok: true,
-        message: result.message,
-        notebookUrl: result.notebookUrl
-      });
-      await upsertDestination({
-        name: getNewNotebookDisplayName(result.title),
-        notebookUrl: result.notebookUrl
-      });
-    } catch (error) {
-      status.items.push({
-        kind: "new",
-        name: getNewNotebookDisplayName(request.newNotebookTitle),
-        ok: false,
-        message: getErrorMessage(error)
-      });
-    }
-
-    await persistStatus();
-  }
-
   status.state = getFinalAddJobState(status.items);
   status.message = buildAddJobStatusMessage(status.items);
   await persistStatus();
@@ -260,16 +231,13 @@ async function handleNotebookCreate(request: NotebookCreateRequest): Promise<Not
   const notebookId = parseNotebookCreateResponse(createResponse);
   const notebookUrl = buildNotebookUrl(notebookId, request.authuser);
 
-  await addNotebookLmSources(authParams, notebookId, [request.source.url]);
-
   const checkedAt = new Date().toISOString();
   return {
     ok: true,
     notebookId,
     notebookUrl,
     title,
-    source: request.source,
-    message: "新しいNotebookLMノートブックを作成し、URL追加を実行しました。",
+    message: "新しいNotebookLMノートブックを作成しました。",
     checkedAt
   };
 }
@@ -503,10 +471,6 @@ function getDateNotebookLabel(period: DateNotebookPeriod): string {
     case "monthly":
       return "Monthly";
   }
-}
-
-function getNewNotebookDisplayName(title: string): string {
-  return title.trim() || "新しいノートブック";
 }
 
 function getDateNotebookEmoji(period: DateNotebookPeriod): string {
@@ -1034,8 +998,7 @@ function isNotebookAddJobMessage(value: unknown): value is {
     Array.isArray(value.payload.existingTargets) &&
     value.payload.existingTargets.every(isNotebookDirectAddTarget) &&
     Array.isArray(value.payload.datePeriods) &&
-    value.payload.datePeriods.every(isDateNotebookPeriod) &&
-    (value.payload.newNotebookTitle === undefined || typeof value.payload.newNotebookTitle === "string")
+    value.payload.datePeriods.every(isDateNotebookPeriod)
   );
 }
 
@@ -1088,7 +1051,6 @@ function isNotebookCreateMessage(value: unknown): value is {
     value.type === "createNotebookLmNotebook" &&
     isRecord(value.payload) &&
     typeof value.payload.title === "string" &&
-    isCurrentPage(value.payload.source) &&
     (value.payload.emoji === undefined || typeof value.payload.emoji === "string") &&
     (value.payload.authuser === undefined || typeof value.payload.authuser === "string")
   );

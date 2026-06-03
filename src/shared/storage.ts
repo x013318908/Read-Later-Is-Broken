@@ -7,8 +7,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   selectedDestinationIds: [],
   dailyDestinationEnabled: false,
   weeklyDestinationEnabled: false,
-  monthlyDestinationEnabled: false,
-  newNotebookEnabled: false
+  monthlyDestinationEnabled: false
 };
 
 export function loadSettings(): Promise<AppSettings> {
@@ -43,7 +42,7 @@ export async function upsertDestination(input: Pick<Destination, "name" | "noteb
 
   const nextSettings = {
     ...settings,
-    destinations: sortDestinations(destinations)
+    destinations
   };
 
   await saveSettings(nextSettings);
@@ -86,7 +85,7 @@ export async function replaceDestinations(inputs: Array<Pick<Destination, "name"
   const destinationIds = new Set(destinations.map((destination) => destination.id));
   const nextSettings = {
     ...settings,
-    destinations: sortDestinations(destinations),
+    destinations,
     selectedDestinationIds: settings.selectedDestinationIds.filter((destinationId) =>
       destinationIds.has(destinationId)
     )
@@ -109,7 +108,7 @@ export async function rememberSelectedDestinations(ids: string[]): Promise<AppSe
 export async function rememberPopupTargetSettings(
   input: Pick<
     AppSettings,
-    "dailyDestinationEnabled" | "weeklyDestinationEnabled" | "monthlyDestinationEnabled" | "newNotebookEnabled"
+    "dailyDestinationEnabled" | "weeklyDestinationEnabled" | "monthlyDestinationEnabled"
   >
 ): Promise<AppSettings> {
   const settings = await loadSettings();
@@ -117,8 +116,7 @@ export async function rememberPopupTargetSettings(
     ...settings,
     dailyDestinationEnabled: input.dailyDestinationEnabled,
     weeklyDestinationEnabled: input.weeklyDestinationEnabled,
-    monthlyDestinationEnabled: input.monthlyDestinationEnabled,
-    newNotebookEnabled: input.newNotebookEnabled
+    monthlyDestinationEnabled: input.monthlyDestinationEnabled
   };
 
   await saveSettings(nextSettings);
@@ -157,12 +155,11 @@ function normalizeSettings(value: unknown): AppSettings {
     : [];
 
   return {
-    destinations: sortDestinations(destinations),
+    destinations,
     selectedDestinationIds,
     dailyDestinationEnabled: value.dailyDestinationEnabled === true,
     weeklyDestinationEnabled: value.weeklyDestinationEnabled === true,
     monthlyDestinationEnabled: value.monthlyDestinationEnabled === true,
-    newNotebookEnabled: value.newNotebookEnabled === true,
     ...(isLastAddStatus(value.lastAddStatus) ? { lastAddStatus: value.lastAddStatus } : {})
   };
 }
@@ -211,23 +208,6 @@ function setStorageValue(area: chrome.storage.StorageArea, settings: AppSettings
   });
 }
 
-function sortDestinations(destinations: Destination[]): Destination[] {
-  return [...destinations].sort(compareDestinations);
-}
-
-function compareDestinations(a: Destination, b: Destination): number {
-  const nameComparison = a.name.localeCompare(b.name, "ja", {
-    numeric: true,
-    sensitivity: "base"
-  });
-
-  if (nameComparison !== 0) {
-    return nameComparison;
-  }
-
-  return a.notebookUrl.localeCompare(b.notebookUrl);
-}
-
 function isDestination(value: unknown): value is Destination {
   return (
     isRecord(value) &&
@@ -269,7 +249,7 @@ function isAddJobStatusItem(value: unknown): value is AddJobStatusItem {
 }
 
 function isAddJobTargetKind(value: unknown): value is AddJobStatusItem["kind"] {
-  return value === "existing" || value === "daily" || value === "weekly" || value === "monthly" || value === "new";
+  return value === "existing" || value === "daily" || value === "weekly" || value === "monthly";
 }
 
 function isCurrentPage(value: unknown): value is CurrentPage {

@@ -68,12 +68,22 @@ legend {
 
 .destination-toolbar {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
   gap: 8px;
   align-items: center;
 }
 
-.destination-toolbar input {
+.destination-toolbar .secondary-button {
+  width: 100%;
+}
+
+.notebook-create-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.notebook-create-toolbar input {
   min-height: 34px;
   padding: 7px 9px;
   font-size: 12px;
@@ -194,13 +204,6 @@ legend {
 
 .special-destination-row small {
   color: #5e655f;
-}
-
-.special-destination-row input[type="text"] {
-  margin: 5px 0 4px;
-  min-height: 34px;
-  padding: 7px 9px;
-  font-size: 12px;
 }
 
 input,
