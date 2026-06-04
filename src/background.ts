@@ -156,7 +156,7 @@ async function handleNotebookAddJob(request: NotebookAddJobRequest): Promise<Not
 }
 
 async function handleNotebookDirectAdd(request: NotebookDirectAddRequest): Promise<NotebookDirectAddResult> {
-  return addSourceToNotebookTarget(request, { active: true, closeWhenDone: false });
+  return addSourceToNotebookTarget(request, { active: false, closeWhenDone: true });
 }
 
 function getFinalAddJobState(items: AddJobStatusItem[]): LastAddStatus["state"] {
