@@ -11,32 +11,36 @@
         <fieldset class="target-group digest-group">
           <legend>ダイジェスト</legend>
 
-          <div class="extra-destination-list" aria-label="ダイジェスト用NotebookLMノートブック">
-            <label class="destination-check-row special-destination-row digest-destination-row">
-              <input id="daily-destination-enabled" type="checkbox" />
-              <span>
-                <strong id="daily-title">Daily yyyy-MM-dd</strong>
-              </span>
-            </label>
-
-            <label class="destination-check-row special-destination-row digest-destination-row">
-              <input id="weekly-destination-enabled" type="checkbox" />
-              <span>
-                <strong id="weekly-title">Weekly yyyy-Www</strong>
-              </span>
-            </label>
-
-            <label class="destination-check-row special-destination-row digest-destination-row">
-              <input id="monthly-destination-enabled" type="checkbox" />
-              <span>
-                <strong id="monthly-title">Monthly yyyy-MM</strong>
-              </span>
-            </label>
-          </div>
-
           <div class="action-row">
             <button id="send-button" type="submit">NotebookLM に追加</button>
           </div>
+
+          <details class="digest-destination-settings">
+            <summary>保存先</summary>
+
+            <div class="extra-destination-list" aria-label="ダイジェスト用NotebookLMノートブック">
+              <label class="destination-check-row special-destination-row digest-destination-row">
+                <input id="daily-destination-enabled" type="checkbox" />
+                <span>
+                  <strong id="daily-title">Daily yyyy-MM-dd</strong>
+                </span>
+              </label>
+
+              <label class="destination-check-row special-destination-row digest-destination-row">
+                <input id="weekly-destination-enabled" type="checkbox" />
+                <span>
+                  <strong id="weekly-title">Weekly yyyy-Www</strong>
+                </span>
+              </label>
+
+              <label class="destination-check-row special-destination-row digest-destination-row">
+                <input id="monthly-destination-enabled" type="checkbox" />
+                <span>
+                  <strong id="monthly-title">Monthly yyyy-MM</strong>
+                </span>
+              </label>
+            </div>
+          </details>
         </fieldset>
       </form>
 

@@ -110,6 +110,24 @@ fieldset {
   background: rgba(236, 246, 241, 0.66);
 }
 
+.digest-destination-settings {
+  border-top: 1px solid rgba(44, 91, 80, 0.16);
+  padding-top: 8px;
+}
+
+.digest-destination-settings summary {
+  width: fit-content;
+  color: #4f5b54;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.digest-destination-settings[open] summary {
+  margin-bottom: 8px;
+}
+
 .theme-group {
   background: rgba(255, 255, 255, 0.7);
 }
