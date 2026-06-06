@@ -115,13 +115,6 @@ a {
   line-height: 1.25;
 }
 
-.hero .concept-line {
-  margin-top: 14px;
-  color: var(--text);
-  font-size: 17px;
-  font-weight: 700;
-}
-
 .actions {
   flex-wrap: wrap;
   gap: 12px;
@@ -149,6 +142,14 @@ a {
 
 .button.primary:hover {
   background: var(--accent-strong);
+}
+
+.button.is-disabled {
+  cursor: default;
+}
+
+.button.is-disabled:hover {
+  background: var(--accent);
 }
 
 .button.secondary {
@@ -271,6 +272,10 @@ figure {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.single-screenshot {
+  max-width: 760px;
+}
+
 .screenshot-image {
   display: block;
   width: 100%;
@@ -278,18 +283,6 @@ figure {
   border-bottom: 1px solid var(--line);
   background: #151515;
   object-fit: contain;
-}
-
-.screenshot-placeholder {
-  display: grid;
-  aspect-ratio: 16 / 10;
-  place-items: center;
-  border-bottom: 1px solid var(--line);
-  background:
-    linear-gradient(135deg, rgba(37, 107, 93, 0.12), transparent 45%),
-    var(--surface-soft);
-  color: var(--muted);
-  font-weight: 700;
 }
 
 figcaption {
