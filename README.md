@@ -51,6 +51,8 @@ npm run dev
 GitHub Pages は `main` ブランチの `docs/` を公開元にします。
 
 - `docs/index.html`: 公開ページのサンプル
+- `docs/privacy.html`: Chrome Web Store 用プライバシーポリシー
+- `docs/permissions.html`: Chrome Web Store 審査用の権限説明
 - `docs/assets/styles/`: GitHub Pages 用CSS
 - `docs/assets/screenshots/`: スクリーンショット置き場
 - `docs/roadmap.md`: 実装方針と今後のメモ

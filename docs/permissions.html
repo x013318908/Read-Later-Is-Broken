@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Permission Justifications | Read Later Is Broken</title>
+    <meta
+      name="description"
+      content="Chrome Web Store permission justifications for the Read Later Is Broken Chrome extension."
+    />
+    <link rel="stylesheet" href="./assets/styles/pages.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Read Later Is Broken home">
+        <span class="brand-mark" aria-hidden="true">R</span>
+        <span>Read Later Is Broken</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="./#features">Features</a>
+        <a href="./#screenshots">Screenshots</a>
+        <a href="./privacy.html">Privacy</a>
+        <a href="./permissions.html">Permissions</a>
+      </nav>
+    </header>
+
+    <main class="policy-page">
+      <section class="policy-hero">
+        <p class="page-kicker">Chrome Web Store Review</p>
+        <h1>Permission Justifications</h1>
+        <p>Last updated: June 6, 2026</p>
+      </section>
+
+      <section class="policy-section">
+        <h2>Single purpose</h2>
+        <p>
+          Read Later Is Broken lets users add the current browser page URL to selected
+          NotebookLM notebooks from a Chrome extension popup.
+        </p>
+      </section>
+
+      <section class="policy-section">
+        <h2>Requested permissions</h2>
+        <div class="permission-list">
+          <article>
+            <h3><code>activeTab</code></h3>
+            <p>
+              Used only after the user opens the extension popup to read the active tab's
+              URL and title. This lets the extension add the current page to NotebookLM
+              without requesting persistent access to all websites.
+            </p>
+          </article>
+          <article>
+            <h3><code>scripting</code></h3>
+            <p>
+              Used to run bundled extension helper code in temporary NotebookLM tabs. The
+              helper code performs user-requested NotebookLM actions such as adding the
+              current page as a source.
+            </p>
+          </article>
+          <article>
+            <h3><code>storage</code></h3>
+            <p>
+              Used to store extension settings in Chrome extension storage, including saved
+              NotebookLM destinations, selected destination IDs, digest checkbox settings,
+              and the last add result.
+            </p>
+          </article>
+          <article>
+            <h3><code>https://notebooklm.google.com/*</code></h3>
+            <p>
+              Required to interact with NotebookLM for the extension's single purpose:
+              listing notebooks, creating notebooks, and adding the current page URL as a
+              source to selected notebooks.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="policy-section">
+        <h2>Chrome Web Store dashboard copy</h2>
+        <div class="copy-block">
+          <h3>Single purpose description</h3>
+          <p>
+            Read Later Is Broken helps users add the current browser page URL to selected
+            NotebookLM notebooks from a Chrome extension popup.
+          </p>
+        </div>
+        <div class="copy-block">
+          <h3>Remote code</h3>
+          <p>
+            No remote code is used. The extension executes only bundled extension code.
+            Network requests are made to NotebookLM only to perform user-requested actions.
+          </p>
+        </div>
+        <div class="copy-block">
+          <h3>Data use summary</h3>
+          <p>
+            The extension handles the current tab URL/title, NotebookLM notebook names/URLs,
+            saved destination selections, digest preferences, and the last add result. This
+            data is used only to add the current page to user-selected NotebookLM notebooks
+            and to remember extension settings. The extension does not use this data for ads,
+            analytics, profiling, or sale to third parties.
+          </p>
+        </div>
+      </section>
+
+      <section class="policy-section">
+        <h2>Not requested</h2>
+        <p>
+          The extension does not request broad <code>&lt;all_urls&gt;</code> host access,
+          cookies, history, downloads, geolocation, microphone, camera, notifications,
+          bookmarks, or declarative network request permissions.
+        </p>
+      </section>
+
+      <section class="policy-section">
+        <h2>Related pages</h2>
+        <p>
+          See the <a href="./privacy.html">Privacy Policy</a> for data handling details.
+        </p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a href="./">Home</a>
+      <a href="./privacy.html">Privacy Policy</a>
+      <span>This project is not affiliated with Google or NotebookLM.</span>
+    </footer>
+  </body>
+</html>

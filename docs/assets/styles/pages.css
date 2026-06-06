@@ -287,6 +287,110 @@ figcaption {
   border-top: 1px solid var(--line);
 }
 
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 28px 24px 44px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.site-footer a {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.policy-page {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 42px 24px 72px;
+}
+
+.policy-hero {
+  padding: 36px 0 28px;
+  border-bottom: 1px solid var(--line);
+}
+
+.page-kicker {
+  margin: 0 0 14px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.policy-hero h1 {
+  margin: 0;
+  font-size: 48px;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.policy-hero p:last-child {
+  margin: 14px 0 0;
+  color: var(--muted);
+}
+
+.policy-section {
+  padding: 30px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.policy-section h2 {
+  margin: 0 0 14px;
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+.policy-section h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+
+.policy-section p,
+.policy-section li {
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.policy-section p {
+  margin: 0 0 14px;
+}
+
+.policy-section p:last-child {
+  margin-bottom: 0;
+}
+
+.policy-section ul {
+  margin: 0 0 18px;
+  padding-left: 22px;
+}
+
+.permission-list {
+  display: grid;
+  gap: 14px;
+}
+
+.permission-list article,
+.copy-block {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.copy-block + .copy-block {
+  margin-top: 14px;
+}
+
+.policy-section a {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
 code {
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -317,6 +421,11 @@ code {
     flex-direction: column;
   }
 
+  .site-footer {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
   .site-nav {
     flex-wrap: wrap;
   }
@@ -331,6 +440,14 @@ code {
   .hero h1 {
     font-size: 38px;
     line-height: 1.08;
+  }
+
+  .policy-page {
+    padding: 28px 18px 54px;
+  }
+
+  .policy-hero h1 {
+    font-size: 36px;
   }
 
   .hero p {
