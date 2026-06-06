@@ -6,6 +6,7 @@ import {
   replaceDestinations,
   upsertDestination
 } from "../shared/storage";
+import { applyDocumentI18n, getUiLanguage, t } from "../shared/i18n";
 import type {
   AppSettings,
   CurrentPage,
@@ -32,6 +33,8 @@ const state: {
   searchQuery: ""
 };
 
+const sortLocale = getUiLanguage();
+
 const elements = {
   digestForm: getElement<HTMLFormElement>("digest-form"),
   themeForm: getElement<HTMLFormElement>("theme-form"),
@@ -57,6 +60,8 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function initialize(): Promise<void> {
+  document.documentElement.lang = sortLocale;
+  applyDocumentI18n();
   applyDateNotebookTitles();
 
   elements.digestForm.addEventListener("submit", (event) => {
@@ -110,7 +115,7 @@ async function initialize(): Promise<void> {
     const currentPage = await getCurrentPage();
     state.currentPage = currentPage;
   } catch (error) {
-    showMessage(`現在のページを取得できませんでした。${getErrorMessage(error)}`, "danger");
+    showMessage(t("currentPageUnavailable", [getErrorMessage(error)]), "danger");
     setSendButtonsDisabled(true);
   }
 }
@@ -125,8 +130,8 @@ async function refreshNotebookList(options: {
   showMessage(
     options.startMessage ??
       (options.auto
-        ? "NotebookLMのノートブック一覧を読み込んでいます。"
-        : "NotebookLMのノートブック一覧を更新しています。"),
+        ? t("loadingNotebookList")
+        : t("refreshingNotebookList")),
     "neutral"
   );
 
@@ -134,7 +139,7 @@ async function refreshNotebookList(options: {
     const result = await syncNotebookList(options.preserveDestinations ?? []);
     state.settings = result.settings;
     renderDestinations(state.settings, { selectedFirst: true });
-    showMessage(options.completeMessage ?? `NotebookLMから${result.notebookCount}件を読み込みました。`, "neutral");
+    showMessage(options.completeMessage ?? t("loadedNotebookList", [String(result.notebookCount)]), "neutral");
   } catch (error) {
     showMessage(getErrorMessage(error), "danger");
   } finally {
@@ -152,7 +157,7 @@ async function syncNotebookList(preserveDestinations: Destination[] = []): Promi
   });
 
   if (!isNotebookListResponse(response)) {
-    throw new Error("ノートブック一覧の取得結果を読めませんでした。");
+    throw new Error(t("notebookListUnreadable"));
   }
 
   if (!response.ok) {
@@ -182,19 +187,19 @@ async function syncNotebookList(preserveDestinations: Destination[] = []): Promi
 
 async function handleDigestSubmit(): Promise<void> {
   if (!state.currentPage) {
-    showMessage("現在ページが取得できていません。", "danger");
+    showMessage(t("currentPageNotReady"), "danger");
     return;
   }
 
   const dateNotebookPeriods = getEnabledDateNotebookPeriods();
 
   if (dateNotebookPeriods.length === 0) {
-    showMessage("ダイジェストの追加先を1つ以上選択してください。", "danger");
+    showMessage(t("selectDigestDestination"), "danger");
     return;
   }
 
   await runNotebookAddJob({
-    startMessage: "ダイジェスト用ノートブックへの追加を開始しました。popupを閉じても続行します。",
+    startMessage: t("digestJobStarted"),
     existingTargets: [],
     datePeriods: dateNotebookPeriods
   });
@@ -202,19 +207,19 @@ async function handleDigestSubmit(): Promise<void> {
 
 async function handleThemeSubmit(): Promise<void> {
   if (!state.currentPage) {
-    showMessage("現在ページが取得できていません。", "danger");
+    showMessage(t("currentPageNotReady"), "danger");
     return;
   }
 
   const destinations = getSelectedDestinations();
 
   if (destinations.length === 0) {
-    showMessage("テーマ別の追加先を1つ以上選択してください。", "danger");
+    showMessage(t("selectThemeDestination"), "danger");
     return;
   }
 
   await runNotebookAddJob({
-    startMessage: "テーマ別ノートブックへの追加を開始しました。popupを閉じても続行します。",
+    startMessage: t("themeJobStarted"),
     existingTargets: destinations.map((destination) => ({
       destinationId: destination.id,
       name: destination.name,
@@ -230,7 +235,7 @@ async function handleCreateNotebook(): Promise<void> {
 
   elements.createNotebookButton.disabled = true;
   elements.refreshNotebooksButton.disabled = true;
-  showMessage("NotebookLMにノートブックを作成しています。", "neutral");
+  showMessage(t("creatingNotebook"), "neutral");
 
   try {
     const response = await chrome.runtime.sendMessage({
@@ -241,7 +246,7 @@ async function handleCreateNotebook(): Promise<void> {
     });
 
     if (!isNotebookCreateResponse(response)) {
-      throw new Error("新規ノートブックの作成結果を読めませんでした。");
+      throw new Error(t("createNotebookResultUnreadable"));
     }
 
     if (!response.ok) {
@@ -260,16 +265,16 @@ async function handleCreateNotebook(): Promise<void> {
       ? await rememberSelectedDestinations([...selectedIds, createdDestination.id])
       : optimisticSettings;
     renderDestinations(state.settings, { selectedFirst: true });
-    showMessage("ノートブックを作成しました。一覧を更新しています。", "neutral");
+    showMessage(t("notebookCreatedRefreshing"), "neutral");
 
     if (createdDestination) {
       try {
         const result = await syncNotebookList([createdDestination]);
         state.settings = result.settings;
         renderDestinations(state.settings, { selectedFirst: true });
-        showMessage("ノートブックを作成しました。", "success");
+        showMessage(t("notebookCreated"), "success");
       } catch (error) {
-        showMessage(`ノートブックを作成しました。一覧更新は失敗しました: ${getErrorMessage(error)}`, "danger");
+        showMessage(t("notebookCreatedRefreshFailed", [getErrorMessage(error)]), "danger");
       }
     }
   } catch (error) {
@@ -300,7 +305,7 @@ async function runNotebookAddJob(input: {
     });
 
     if (!isAddJobResponse(response)) {
-      throw new Error("NotebookLM追加結果を取得できませんでした。");
+      throw new Error(t("notebookAddResultUnreadable"));
     }
 
     if (!response.ok) {
@@ -322,7 +327,7 @@ async function getCurrentPage(): Promise<CurrentPage> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
   if (!tab?.url || tab.url.startsWith("chrome://") || tab.url.startsWith("edge://")) {
-    throw new Error("このページは Chrome 拡張から取得できません。");
+    throw new Error(t("unsupportedCurrentPage"));
   }
 
   return {
@@ -333,7 +338,7 @@ async function getCurrentPage(): Promise<CurrentPage> {
 
 function renderDestinations(settings: AppSettings, options: { selectedFirst?: boolean } = {}): void {
   elements.destinationList.replaceChildren();
-  elements.destinationCount.textContent = `ノートブック ${settings.destinations.length}件`;
+  elements.destinationCount.textContent = t("notebookCount", [String(settings.destinations.length)]);
   elements.dailyDestinationEnabled.checked = settings.dailyDestinationEnabled;
   elements.weeklyDestinationEnabled.checked = settings.weeklyDestinationEnabled;
   elements.monthlyDestinationEnabled.checked = settings.monthlyDestinationEnabled;
@@ -341,7 +346,7 @@ function renderDestinations(settings: AppSettings, options: { selectedFirst?: bo
   if (settings.destinations.length === 0) {
     const empty = document.createElement("div");
     empty.className = "destination-check-empty";
-    empty.textContent = "保存先が未登録です";
+    empty.textContent = t("emptyDestinationList");
     elements.destinationList.append(empty);
     updateSendButtonLabel();
     return;
@@ -358,7 +363,7 @@ function renderDestinations(settings: AppSettings, options: { selectedFirst?: bo
   if (visibleDestinations.length === 0) {
     const empty = document.createElement("div");
     empty.className = "destination-check-empty";
-    empty.textContent = "一致するノートブックはありません";
+    empty.textContent = t("noMatchingNotebooks");
     elements.destinationList.append(empty);
     updateSendButtonLabel();
     return;
@@ -425,7 +430,7 @@ function sortDestinationsForDisplay(destinations: Destination[], selectedIds: Se
       return selectedComparison;
     }
 
-    const nameComparison = a.name.localeCompare(b.name, "ja", {
+    const nameComparison = a.name.localeCompare(b.name, sortLocale, {
       numeric: true,
       sensitivity: "base"
     });
@@ -439,7 +444,7 @@ function sortDestinationsForDisplay(destinations: Destination[], selectedIds: Se
 }
 
 function normalizeSearchText(value: string): string {
-  return value.trim().toLocaleLowerCase("ja");
+  return value.trim().toLocaleLowerCase(sortLocale);
 }
 
 function getSelectedDestinations(): Destination[] {
@@ -450,8 +455,10 @@ function getSelectedDestinations(): Destination[] {
 function updateSendButtonLabel(): void {
   const existingCount = getSelectedDestinationIdsFromForm().length;
   const dateNotebookCount = getEnabledDateNotebookPeriods().length;
-  elements.sendButton.textContent = dateNotebookCount > 0 ? `NotebookLM に追加 (${dateNotebookCount})` : "NotebookLM に追加";
-  elements.themeSendButton.textContent = existingCount > 0 ? `NotebookLM に追加 (${existingCount})` : "NotebookLM に追加";
+  elements.sendButton.textContent =
+    dateNotebookCount > 0 ? t("addToNotebookLmWithCount", [String(dateNotebookCount)]) : t("addToNotebookLm");
+  elements.themeSendButton.textContent =
+    existingCount > 0 ? t("addToNotebookLmWithCount", [String(existingCount)]) : t("addToNotebookLm");
 }
 
 function getSelectedDestinationIdsFromForm(): string[] {
@@ -488,7 +495,7 @@ function renderLastAddStatus(status: LastAddStatus | undefined): void {
     return;
   }
 
-  elements.lastResult.textContent = `前回の追加: ${status.message}`;
+  elements.lastResult.textContent = t("lastAddResult", [status.message]);
   elements.lastResult.dataset.variant = getStatusMessageVariant(status);
 }
 
@@ -572,7 +579,7 @@ function formatNotebookName(notebook: NotebookListResult["notebooks"][number]): 
 }
 
 function getNewNotebookDisplayName(title: string): string {
-  return title.trim() || "新しいノートブック";
+  return title.trim() || t("newNotebookFallbackName");
 }
 
 function showMessage(message: string, variant: "neutral" | "success" | "danger"): void {
@@ -591,7 +598,7 @@ function getElement<T extends HTMLElement>(id: string): T {
 }
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "予期しないエラーが発生しました。";
+  return error instanceof Error ? error.message : t("unexpectedError");
 }
 
 function isAddJobResponse(value: unknown): value is

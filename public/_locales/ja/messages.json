@@ -1,0 +1,344 @@
+{
+  "extensionName": {
+    "message": "Read Later Is Broken"
+  },
+  "extensionDescription": {
+    "message": "現在ページを選択したNotebookLMノートブックへ送ります。"
+  },
+  "digest": {
+    "message": "ダイジェスト"
+  },
+  "theme": {
+    "message": "テーマ別"
+  },
+  "addToNotebookLm": {
+    "message": "NotebookLM に追加"
+  },
+  "addToNotebookLmWithCount": {
+    "message": "NotebookLM に追加 ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "destinations": {
+    "message": "保存先"
+  },
+  "refreshNotebooks": {
+    "message": "一覧を更新"
+  },
+  "notebookSearchCreateLabel": {
+    "message": "ノートブック検索・新規ノートブック名"
+  },
+  "notebookSearchCreatePlaceholder": {
+    "message": "ノートブックを検索 / 新規名"
+  },
+  "create": {
+    "message": "作成"
+  },
+  "digestNotebookListLabel": {
+    "message": "ダイジェスト用NotebookLMノートブック"
+  },
+  "registeredNotebookListLabel": {
+    "message": "登録済みNotebookLMノートブック"
+  },
+  "notebookCount": {
+    "message": "ノートブック $COUNT$件",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "footerDisclaimer": {
+    "message": "Independent helper. Not affiliated with Google or NotebookLM."
+  },
+  "loadingNotebookList": {
+    "message": "NotebookLMのノートブック一覧を読み込んでいます。"
+  },
+  "refreshingNotebookList": {
+    "message": "NotebookLMのノートブック一覧を更新しています。"
+  },
+  "loadedNotebookList": {
+    "message": "NotebookLMから$COUNT$件を読み込みました。",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "notebookListUnreadable": {
+    "message": "ノートブック一覧の取得結果を読めませんでした。"
+  },
+  "currentPageUnavailable": {
+    "message": "現在のページを取得できませんでした。$ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "currentPageNotReady": {
+    "message": "現在ページが取得できていません。"
+  },
+  "selectDigestDestination": {
+    "message": "ダイジェストの追加先を1つ以上選択してください。"
+  },
+  "digestJobStarted": {
+    "message": "ダイジェスト用ノートブックへの追加を開始しました。popupを閉じても続行します。"
+  },
+  "selectThemeDestination": {
+    "message": "テーマ別の追加先を1つ以上選択してください。"
+  },
+  "themeJobStarted": {
+    "message": "テーマ別ノートブックへの追加を開始しました。popupを閉じても続行します。"
+  },
+  "creatingNotebook": {
+    "message": "NotebookLMにノートブックを作成しています。"
+  },
+  "createNotebookResultUnreadable": {
+    "message": "新規ノートブックの作成結果を読めませんでした。"
+  },
+  "notebookCreatedRefreshing": {
+    "message": "ノートブックを作成しました。一覧を更新しています。"
+  },
+  "notebookCreated": {
+    "message": "ノートブックを作成しました。"
+  },
+  "notebookCreatedRefreshFailed": {
+    "message": "ノートブックを作成しました。一覧更新は失敗しました: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "notebookAddResultUnreadable": {
+    "message": "NotebookLM追加結果を取得できませんでした。"
+  },
+  "unsupportedCurrentPage": {
+    "message": "このページは Chrome 拡張から取得できません。"
+  },
+  "emptyDestinationList": {
+    "message": "保存先が未登録です"
+  },
+  "noMatchingNotebooks": {
+    "message": "一致するノートブックはありません"
+  },
+  "lastAddResult": {
+    "message": "前回の追加: $MESSAGE$",
+    "placeholders": {
+      "message": {
+        "content": "$1"
+      }
+    }
+  },
+  "newNotebookFallbackName": {
+    "message": "新しいノートブック"
+  },
+  "unexpectedError": {
+    "message": "予期しないエラーが発生しました。"
+  },
+  "runningNotebookAdd": {
+    "message": "NotebookLMへの追加を実行中です。"
+  },
+  "registeredTargets": {
+    "message": "登録済み$COUNT$件",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "noAddDestinations": {
+    "message": "追加先がありませんでした。"
+  },
+  "notebookAddSuccess": {
+    "message": "NotebookLMへの追加を実行しました（$NAMES$）。",
+    "placeholders": {
+      "names": {
+        "content": "$1"
+      }
+    }
+  },
+  "notebookAddFailure": {
+    "message": "NotebookLMへの追加に失敗しました（$FAILURES$）。",
+    "placeholders": {
+      "failures": {
+        "content": "$1"
+      }
+    }
+  },
+  "notebookAddPartial": {
+    "message": "NotebookLMへの追加を一部実行しました（$NAMES$）。失敗: $FAILURES$",
+    "placeholders": {
+      "names": {
+        "content": "$1"
+      },
+      "failures": {
+        "content": "$2"
+      }
+    }
+  },
+  "directBatchAddComplete": {
+    "message": "NotebookLMへの追加を実行しました（$COUNT$件）。NotebookLM側でソース一覧を確認してください。",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "loadedNotebookListBackground": {
+    "message": "NotebookLMから$COUNT$件のノートブックを読み込みました。",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "createdNotebookBackground": {
+    "message": "新しいNotebookLMノートブックを作成しました。"
+  },
+  "dateNotebookAddComplete": {
+    "message": "$PERIOD$ノートブック「$TITLE$」を$ACTION$し、URL追加を実行しました。",
+    "placeholders": {
+      "period": {
+        "content": "$1"
+      },
+      "title": {
+        "content": "$2"
+      },
+      "action": {
+        "content": "$3"
+      }
+    }
+  },
+  "createdAction": {
+    "message": "作成"
+  },
+  "reusedAction": {
+    "message": "再利用"
+  },
+  "notebookLoginCheck": {
+    "message": "NotebookLMにログインしているか確認してください。"
+  },
+  "notebookRpcHttpFailure": {
+    "message": "NotebookLM RPCが失敗しました: HTTP $STATUS$",
+    "placeholders": {
+      "status": {
+        "content": "$1"
+      }
+    }
+  },
+  "notebookRpcEmpty": {
+    "message": "NotebookLM RPCの応答が空でした。"
+  },
+  "notebookRpcUnexpected": {
+    "message": "NotebookLM RPCの応答形式が想定と違います。"
+  },
+  "notebookListLoadFailed": {
+    "message": "NotebookLMのノートブック一覧を読み込めませんでした。"
+  },
+  "untitledNotebook": {
+    "message": "Untitled"
+  },
+  "notebookCreateFailed": {
+    "message": "NotebookLMの新規ノートブックを作成できませんでした。ノートブック数の上限に達している可能性があります。"
+  },
+  "sourceAddFailed": {
+    "message": "NotebookLMノートブックへURLを追加できませんでした。ノートブック内のソース数上限、保護されたページ、または非対応URLの可能性があります。"
+  },
+  "invalidNotebookUrl": {
+    "message": "NotebookLM のノートブックURLを選択してください。"
+  },
+  "notebookTabOpenFailed": {
+    "message": "NotebookLM タブを開けませんでした。"
+  },
+  "notebookTabResultUnreadable": {
+    "message": "NotebookLM タブからURL追加結果を取得できませんでした。"
+  },
+  "tokenMissingTitle": {
+    "message": "NotebookLMのログイン状態を確認できませんでした。"
+  },
+  "tokenMissingAction": {
+    "message": "NotebookLMでログイン済みか、ページの読み込みが完了しているか確認してください。"
+  },
+  "directAddFailureMessage": {
+    "message": "URL追加NG: $TITLE$ $ACTION$",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      },
+      "action": {
+        "content": "$2"
+      }
+    }
+  },
+  "directAddSuccessMessage": {
+    "message": "URL追加OK: NotebookLMにソース追加RPCを送信しました。"
+  },
+  "requestFailedFallback": {
+    "message": "request failed"
+  },
+  "communicationFailureTitle": {
+    "message": "NotebookLMへの通信に失敗しました。"
+  },
+  "communicationFailureAction": {
+    "message": "ネットワーク状態を確認して、もう一度試してください。"
+  },
+  "loginPermissionFailureTitle": {
+    "message": "NotebookLMにログインしていないか、このノートブックにアクセスできません。"
+  },
+  "loginPermissionFailureAction": {
+    "message": "NotebookLMタブでログイン状態と、登録したノートブックURLのGoogleアカウントを確認してください。"
+  },
+  "rateLimitedFailureTitle": {
+    "message": "NotebookLM側で連続追加が制限された可能性があります。"
+  },
+  "rateLimitedFailureAction": {
+    "message": "少し時間を置いてから、もう一度試してください。"
+  },
+  "serverFailureTitle": {
+    "message": "NotebookLM側で一時的なエラーが起きた可能性があります。"
+  },
+  "serverFailureAction": {
+    "message": "NotebookLMタブを再読み込みするか、時間を置いて再試行してください。"
+  },
+  "sourceRejectedFailureTitle": {
+    "message": "NotebookLMは応答しましたが、ソース追加結果が空でした。"
+  },
+  "sourceRejectedFailureAction": {
+    "message": "ノートブックのソース上限、保護されたページ、または非対応URLの可能性があります。"
+  },
+  "responseChangedFailureTitle": {
+    "message": "NotebookLMの内部応答形式が想定と違います。"
+  },
+  "responseChangedFailureAction": {
+    "message": "NotebookLM側の仕様変更の可能性があります。拡張機能側の更新が必要です。"
+  },
+  "unknownFailureTitle": {
+    "message": "NotebookLMへのソース追加RPCが成功しませんでした。"
+  },
+  "unknownFailureAction": {
+    "message": "NotebookLMタブでソース一覧を確認してから、必要なら再試行してください。"
+  },
+  "directAddStatusOkTitle": {
+    "message": "Read Later Is Broken: URL追加OK"
+  },
+  "directAddStatusNgTitle": {
+    "message": "Read Later Is Broken: URL追加NG"
+  },
+  "reasonNone": {
+    "message": "none"
+  },
+  "responseReceived": {
+    "message": "received"
+  },
+  "responseMissing": {
+    "message": "missing"
+  },
+  "notebookLoadTimeout": {
+    "message": "NotebookLM の読み込みがタイムアウトしました。"
+  }
+}

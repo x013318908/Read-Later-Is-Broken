@@ -1,0 +1,344 @@
+{
+  "extensionName": {
+    "message": "Read Later Is Broken"
+  },
+  "extensionDescription": {
+    "message": "Send the current page to selected NotebookLM notebooks."
+  },
+  "digest": {
+    "message": "Digest"
+  },
+  "theme": {
+    "message": "Theme"
+  },
+  "addToNotebookLm": {
+    "message": "Add to NotebookLM"
+  },
+  "addToNotebookLmWithCount": {
+    "message": "Add to NotebookLM ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "destinations": {
+    "message": "Destinations"
+  },
+  "refreshNotebooks": {
+    "message": "Refresh list"
+  },
+  "notebookSearchCreateLabel": {
+    "message": "Notebook search and new notebook name"
+  },
+  "notebookSearchCreatePlaceholder": {
+    "message": "Search notebooks / new name"
+  },
+  "create": {
+    "message": "Create"
+  },
+  "digestNotebookListLabel": {
+    "message": "Digest NotebookLM notebooks"
+  },
+  "registeredNotebookListLabel": {
+    "message": "Registered NotebookLM notebooks"
+  },
+  "notebookCount": {
+    "message": "$COUNT$ notebooks",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "footerDisclaimer": {
+    "message": "Independent helper. Not affiliated with Google or NotebookLM."
+  },
+  "loadingNotebookList": {
+    "message": "Loading NotebookLM notebooks."
+  },
+  "refreshingNotebookList": {
+    "message": "Refreshing NotebookLM notebooks."
+  },
+  "loadedNotebookList": {
+    "message": "Loaded $COUNT$ notebooks from NotebookLM.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "notebookListUnreadable": {
+    "message": "Could not read the notebook list result."
+  },
+  "currentPageUnavailable": {
+    "message": "Could not get the current page. $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "currentPageNotReady": {
+    "message": "The current page is not available yet."
+  },
+  "selectDigestDestination": {
+    "message": "Select at least one digest destination."
+  },
+  "digestJobStarted": {
+    "message": "Started adding to digest notebooks. This will continue if you close the popup."
+  },
+  "selectThemeDestination": {
+    "message": "Select at least one theme destination."
+  },
+  "themeJobStarted": {
+    "message": "Started adding to theme notebooks. This will continue if you close the popup."
+  },
+  "creatingNotebook": {
+    "message": "Creating a NotebookLM notebook."
+  },
+  "createNotebookResultUnreadable": {
+    "message": "Could not read the new notebook creation result."
+  },
+  "notebookCreatedRefreshing": {
+    "message": "Created the notebook. Refreshing the list."
+  },
+  "notebookCreated": {
+    "message": "Created the notebook."
+  },
+  "notebookCreatedRefreshFailed": {
+    "message": "Created the notebook. Refresh failed: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "notebookAddResultUnreadable": {
+    "message": "Could not get the NotebookLM add result."
+  },
+  "unsupportedCurrentPage": {
+    "message": "This page cannot be read by the Chrome extension."
+  },
+  "emptyDestinationList": {
+    "message": "No destinations registered"
+  },
+  "noMatchingNotebooks": {
+    "message": "No matching notebooks"
+  },
+  "lastAddResult": {
+    "message": "Last add: $MESSAGE$",
+    "placeholders": {
+      "message": {
+        "content": "$1"
+      }
+    }
+  },
+  "newNotebookFallbackName": {
+    "message": "New notebook"
+  },
+  "unexpectedError": {
+    "message": "An unexpected error occurred."
+  },
+  "runningNotebookAdd": {
+    "message": "Adding to NotebookLM."
+  },
+  "registeredTargets": {
+    "message": "$COUNT$ registered",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "noAddDestinations": {
+    "message": "No destinations were selected."
+  },
+  "notebookAddSuccess": {
+    "message": "Added to NotebookLM ($NAMES$).",
+    "placeholders": {
+      "names": {
+        "content": "$1"
+      }
+    }
+  },
+  "notebookAddFailure": {
+    "message": "Failed to add to NotebookLM ($FAILURES$).",
+    "placeholders": {
+      "failures": {
+        "content": "$1"
+      }
+    }
+  },
+  "notebookAddPartial": {
+    "message": "Partially added to NotebookLM ($NAMES$). Failed: $FAILURES$",
+    "placeholders": {
+      "names": {
+        "content": "$1"
+      },
+      "failures": {
+        "content": "$2"
+      }
+    }
+  },
+  "directBatchAddComplete": {
+    "message": "Sent add requests to NotebookLM ($COUNT$ notebooks). Check the source list in NotebookLM if needed.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "loadedNotebookListBackground": {
+    "message": "Loaded $COUNT$ notebooks from NotebookLM.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "createdNotebookBackground": {
+    "message": "Created a new NotebookLM notebook."
+  },
+  "dateNotebookAddComplete": {
+    "message": "$PERIOD$ notebook \"$TITLE$\" was $ACTION$, and the URL add request was sent.",
+    "placeholders": {
+      "period": {
+        "content": "$1"
+      },
+      "title": {
+        "content": "$2"
+      },
+      "action": {
+        "content": "$3"
+      }
+    }
+  },
+  "createdAction": {
+    "message": "created"
+  },
+  "reusedAction": {
+    "message": "reused"
+  },
+  "notebookLoginCheck": {
+    "message": "Check that you are signed in to NotebookLM."
+  },
+  "notebookRpcHttpFailure": {
+    "message": "NotebookLM RPC failed: HTTP $STATUS$",
+    "placeholders": {
+      "status": {
+        "content": "$1"
+      }
+    }
+  },
+  "notebookRpcEmpty": {
+    "message": "The NotebookLM RPC response was empty."
+  },
+  "notebookRpcUnexpected": {
+    "message": "The NotebookLM RPC response format was unexpected."
+  },
+  "notebookListLoadFailed": {
+    "message": "Could not load NotebookLM notebooks."
+  },
+  "untitledNotebook": {
+    "message": "Untitled"
+  },
+  "notebookCreateFailed": {
+    "message": "Could not create the new NotebookLM notebook. You may have reached the notebook limit."
+  },
+  "sourceAddFailed": {
+    "message": "Could not add the URL to the NotebookLM notebook. The notebook source limit, a protected page, or an unsupported URL may be the cause."
+  },
+  "invalidNotebookUrl": {
+    "message": "Select a NotebookLM notebook URL."
+  },
+  "notebookTabOpenFailed": {
+    "message": "Could not open the NotebookLM tab."
+  },
+  "notebookTabResultUnreadable": {
+    "message": "Could not get the URL add result from the NotebookLM tab."
+  },
+  "tokenMissingTitle": {
+    "message": "Could not verify NotebookLM sign-in state."
+  },
+  "tokenMissingAction": {
+    "message": "Check that you are signed in to NotebookLM and that the page finished loading."
+  },
+  "directAddFailureMessage": {
+    "message": "URL add failed: $TITLE$ $ACTION$",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      },
+      "action": {
+        "content": "$2"
+      }
+    }
+  },
+  "directAddSuccessMessage": {
+    "message": "URL add succeeded: Sent the source add RPC to NotebookLM."
+  },
+  "requestFailedFallback": {
+    "message": "request failed"
+  },
+  "communicationFailureTitle": {
+    "message": "Communication with NotebookLM failed."
+  },
+  "communicationFailureAction": {
+    "message": "Check your network connection and try again."
+  },
+  "loginPermissionFailureTitle": {
+    "message": "You are not signed in to NotebookLM, or you cannot access this notebook."
+  },
+  "loginPermissionFailureAction": {
+    "message": "Check your NotebookLM sign-in state and the Google account for the registered notebook URL."
+  },
+  "rateLimitedFailureTitle": {
+    "message": "NotebookLM may have limited repeated additions."
+  },
+  "rateLimitedFailureAction": {
+    "message": "Wait a while and try again."
+  },
+  "serverFailureTitle": {
+    "message": "NotebookLM may have a temporary error."
+  },
+  "serverFailureAction": {
+    "message": "Reload NotebookLM or wait a while and try again."
+  },
+  "sourceRejectedFailureTitle": {
+    "message": "NotebookLM responded, but the source add result was empty."
+  },
+  "sourceRejectedFailureAction": {
+    "message": "The notebook source limit, a protected page, or an unsupported URL may be the cause."
+  },
+  "responseChangedFailureTitle": {
+    "message": "NotebookLM's internal response format was unexpected."
+  },
+  "responseChangedFailureAction": {
+    "message": "NotebookLM may have changed its behavior. The extension needs an update."
+  },
+  "unknownFailureTitle": {
+    "message": "The NotebookLM source add RPC did not succeed."
+  },
+  "unknownFailureAction": {
+    "message": "Check the source list in NotebookLM and try again if needed."
+  },
+  "directAddStatusOkTitle": {
+    "message": "Read Later Is Broken: URL add succeeded"
+  },
+  "directAddStatusNgTitle": {
+    "message": "Read Later Is Broken: URL add failed"
+  },
+  "reasonNone": {
+    "message": "none"
+  },
+  "responseReceived": {
+    "message": "received"
+  },
+  "responseMissing": {
+    "message": "missing"
+  },
+  "notebookLoadTimeout": {
+    "message": "NotebookLM loading timed out."
+  }
+}

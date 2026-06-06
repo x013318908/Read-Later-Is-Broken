@@ -29,6 +29,7 @@ npm run dev
 - 現在ページは popup 表示時に内部で取得し、選択した NotebookLM ノートブックへ追加します。
 - 保存済みの既存ノートブックが空の場合は、popup 表示時に NotebookLM のノートブック一覧を自動取得します。
 - popup の一覧更新ボタンから NotebookLM のノートブック一覧を再取得できます。
+- 拡張本体の表示言語は Chrome の UI 言語に合わせ、英語と日本語に対応します。
 - popup は、Daily / Weekly / Monthly へ雑に入れる「ダイジェスト」と、テーマ別の既存ノートブックへ入れる「テーマ別」に分かれています。
 - ダイジェスト側の `NotebookLM に追加` は Daily / Weekly / Monthly だけを対象にします。
 - ダイジェスト側の Daily / Weekly / Monthly チェックは `保存先` に折りたたみ、追加ボタンは常に表示します。
@@ -45,9 +46,21 @@ npm run dev
 
 今後の候補や外した計画は `docs/roadmap.md` に残しています。
 
+## GitHub Pages
+
+GitHub Pages は `main` ブランチの `docs/` を公開元にします。
+
+- `docs/index.html`: 公開ページのサンプル
+- `docs/assets/styles/`: GitHub Pages 用CSS
+- `docs/assets/screenshots/`: スクリーンショット置き場
+- `docs/roadmap.md`: 実装方針と今後のメモ
+
+GitHub 側では `Settings > Pages` で `Deploy from a branch`、Branch を `main`、Folder を `/docs` にします。
+
 ## Files
 
 - `public/manifest.json`: Chrome Manifest V3
+- `public/_locales/*`: manifest と拡張UIの多言語リソース
 - `popup.html`, `src/popup/*`: 拡張アイコン押下時の UI
 - `src/shared/*`: storage と型定義
 - `src/background.ts`: service worker

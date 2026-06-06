@@ -20,6 +20,7 @@ import type {
   NotebookListRequest,
   NotebookListResult
 } from "./shared/types";
+import { t } from "./shared/i18n";
 import { rememberLastAddStatus, upsertDestination } from "./shared/storage";
 
 const MAX_PARALLEL_NOTEBOOK_ADDS = 3;
@@ -84,7 +85,7 @@ async function handleNotebookAddJob(request: NotebookAddJobRequest): Promise<Not
     source: request.source,
     startedAt,
     checkedAt: startedAt,
-    message: "NotebookLMへの追加を実行中です。",
+    message: t("runningNotebookAdd"),
     items: []
   };
 
@@ -103,14 +104,14 @@ async function handleNotebookAddJob(request: NotebookAddJobRequest): Promise<Not
       });
       status.items.push({
         kind: "existing",
-        name: `登録済み${request.existingTargets.length}件`,
+        name: t("registeredTargets", [String(request.existingTargets.length)]),
         ok: true,
         message: batchResult.message
       });
     } catch (error) {
       status.items.push({
         kind: "existing",
-        name: `登録済み${request.existingTargets.length}件`,
+        name: t("registeredTargets", [String(request.existingTargets.length)]),
         ok: false,
         message: getErrorMessage(error)
       });
@@ -172,22 +173,20 @@ function buildAddJobStatusMessage(items: AddJobStatusItem[]): string {
   const failureItems = items.filter((item) => !item.ok);
 
   if (items.length === 0) {
-    return "追加先がありませんでした。";
+    return t("noAddDestinations");
   }
 
   if (failureItems.length === 0) {
-    return `NotebookLMへの追加を実行しました（${successItems.map((item) => item.name).join(" + ")}）。`;
+    return t("notebookAddSuccess", [successItems.map((item) => item.name).join(" + ")]);
   }
 
   const failures = failureItems.map((item) => `${item.name}: ${item.message}`).join(" / ");
 
   if (successItems.length === 0) {
-    return `NotebookLMへの追加に失敗しました（${failures}）。`;
+    return t("notebookAddFailure", [failures]);
   }
 
-  return `NotebookLMへの追加を一部実行しました（${successItems
-    .map((item) => item.name)
-    .join(" + ")}）。失敗: ${failures}`;
+  return t("notebookAddPartial", [successItems.map((item) => item.name).join(" + "), failures]);
 }
 
 async function handleNotebookDirectAddBatch(request: NotebookDirectAddBatchRequest): Promise<NotebookDirectAddBatchResult> {
@@ -203,7 +202,7 @@ async function handleNotebookDirectAddBatch(request: NotebookDirectAddBatchReque
     ok: true,
     source: request.source,
     attemptedCount,
-    message: `NotebookLMへの追加を実行しました（${attemptedCount}件）。NotebookLM側でソース一覧を確認してください。`,
+    message: t("directBatchAddComplete", [String(attemptedCount)]),
     checkedAt
   };
 }
@@ -217,7 +216,7 @@ async function handleNotebookList(request: NotebookListRequest): Promise<Noteboo
   return {
     ok: true,
     notebooks,
-    message: `NotebookLMから${notebooks.length}件のノートブックを読み込みました。`,
+    message: t("loadedNotebookListBackground", [String(notebooks.length)]),
     checkedAt
   };
 }
@@ -237,7 +236,7 @@ async function handleNotebookCreate(request: NotebookCreateRequest): Promise<Not
     notebookId,
     notebookUrl,
     title,
-    message: "新しいNotebookLMノートブックを作成しました。",
+    message: t("createdNotebookBackground"),
     checkedAt
   };
 }
@@ -270,9 +269,11 @@ async function handleNotebookDateAdd(request: NotebookDateAddRequest): Promise<N
     title,
     source: request.source,
     created,
-    message: `${getDateNotebookLabel(request.period)}ノートブック「${title}」を${
-      created ? "作成" : "再利用"
-    }し、URL追加を実行しました。`,
+    message: t("dateNotebookAddComplete", [
+      getDateNotebookLabel(request.period),
+      title,
+      created ? t("createdAction") : t("reusedAction")
+    ]),
     checkedAt
   };
 }
@@ -309,7 +310,7 @@ async function loadNotebookLmAuthParams(authuser?: string): Promise<NotebookLmAu
   const bl = extractNotebookLmToken(html, "cfb2h");
 
   if (!response.ok || !at || !bl) {
-    throw new Error("NotebookLMにログインしているか確認してください。");
+    throw new Error(t("notebookLoginCheck"));
   }
 
   return { authuser, at, bl };
@@ -343,7 +344,7 @@ async function executeNotebookLmRpcs(
   const responseText = await response.text();
 
   if (!response.ok) {
-    throw new Error(`NotebookLM RPCが失敗しました: HTTP ${response.status}`);
+    throw new Error(t("notebookRpcHttpFailure", [String(response.status)]));
   }
 
   return parseNotebookLmRpcResponses(responseText);
@@ -361,13 +362,13 @@ function parseNotebookLmRpcResponses(responseText: string): NotebookLmRpcRespons
   const payload = extractNotebookLmRpcPayload(responseText);
 
   if (!payload) {
-    throw new Error("NotebookLM RPCの応答が空でした。");
+    throw new Error(t("notebookRpcEmpty"));
   }
 
   const rows = JSON.parse(payload) as unknown;
 
   if (!Array.isArray(rows)) {
-    throw new Error("NotebookLM RPCの応答形式が想定と違います。");
+    throw new Error(t("notebookRpcUnexpected"));
   }
 
   return rows.flatMap((row) => parseNotebookLmRpcResponseRow(row));
@@ -392,7 +393,7 @@ function parseNotebookLmRpcResponseRow(row: unknown): NotebookLmRpcResponse[] {
 
 function parseNotebookListResponse(response: NotebookLmRpcResponse | undefined, authuser?: string): NotebookListItem[] {
   if (!response || response.rpcId !== "wXbhsf" || !Array.isArray(response.data)) {
-    throw new Error("NotebookLMのノートブック一覧を読み込めませんでした。");
+    throw new Error(t("notebookListLoadFailed"));
   }
 
   const rows = response.data[0];
@@ -409,7 +410,7 @@ function parseNotebookListItem(row: unknown, authuser?: string): NotebookListIte
     return [];
   }
 
-  const title = typeof row[0] === "string" && row[0].trim() ? row[0].trim() : "Untitled";
+  const title = typeof row[0] === "string" && row[0].trim() ? row[0].trim() : t("untitledNotebook");
   const emoji = typeof row[3] === "string" && row[3].trim() ? row[3].trim() : undefined;
   const updatedAtMs = parseNotebookUpdatedAtMs(row);
 
@@ -514,7 +515,7 @@ function formatLocalIsoWeek(date: Date): string {
 
 function parseNotebookCreateResponse(response: NotebookLmRpcResponse | undefined): string {
   if (!response || response.rpcId !== "CCqFvf" || !Array.isArray(response.data) || typeof response.data[2] !== "string") {
-    throw new Error("NotebookLMの新規ノートブックを作成できませんでした。ノートブック数の上限に達している可能性があります。");
+    throw new Error(t("notebookCreateFailed"));
   }
 
   return response.data[2];
@@ -533,7 +534,7 @@ async function addNotebookLmSources(
   ]);
 
   if (!response || response.rpcId !== "izAoDd" || !response.data) {
-    throw new Error("NotebookLMノートブックへURLを追加できませんでした。ノートブック内のソース数上限、保護されたページ、または非対応URLの可能性があります。");
+    throw new Error(t("sourceAddFailed"));
   }
 }
 
@@ -593,13 +594,13 @@ async function addSourceToNotebookTarget(
   const notebookTarget = getNotebookTarget(request.notebookUrl);
 
   if (!notebookTarget) {
-    throw new Error("NotebookLM のノートブックURLを選択してください。");
+    throw new Error(t("invalidNotebookUrl"));
   }
 
   const tab = await chrome.tabs.create({ url: request.notebookUrl, active: options.active });
 
   if (!tab.id) {
-    throw new Error("NotebookLM タブを開けませんでした。");
+    throw new Error(t("notebookTabOpenFailed"));
   }
 
   try {
@@ -614,7 +615,8 @@ async function addSourceToNotebookTarget(
           notebookUrl: request.notebookUrl,
           notebookId: notebookTarget.notebookId,
           authuser: notebookTarget.authuser,
-          source: request.source
+          source: request.source,
+          messages: getDirectAddPageMessages()
         }
       ]
     });
@@ -622,7 +624,7 @@ async function addSourceToNotebookTarget(
     const result = injectionResult?.result;
 
     if (!isNotebookDirectAddResult(result)) {
-      throw new Error("NotebookLM タブからURL追加結果を取得できませんでした。");
+      throw new Error(t("notebookTabResultUnreadable"));
     }
 
     return result;
@@ -633,11 +635,68 @@ async function addSourceToNotebookTarget(
   }
 }
 
+interface DirectAddPageMessages {
+  tokenMissingTitle: string;
+  tokenMissingAction: string;
+  directAddFailureMessage: string;
+  directAddSuccessMessage: string;
+  requestFailedFallback: string;
+  communicationFailureTitle: string;
+  communicationFailureAction: string;
+  loginPermissionFailureTitle: string;
+  loginPermissionFailureAction: string;
+  rateLimitedFailureTitle: string;
+  rateLimitedFailureAction: string;
+  serverFailureTitle: string;
+  serverFailureAction: string;
+  sourceRejectedFailureTitle: string;
+  sourceRejectedFailureAction: string;
+  responseChangedFailureTitle: string;
+  responseChangedFailureAction: string;
+  unknownFailureTitle: string;
+  unknownFailureAction: string;
+  directAddStatusOkTitle: string;
+  directAddStatusNgTitle: string;
+  reasonNone: string;
+  responseReceived: string;
+  responseMissing: string;
+}
+
+function getDirectAddPageMessages(): DirectAddPageMessages {
+  return {
+    tokenMissingTitle: t("tokenMissingTitle"),
+    tokenMissingAction: t("tokenMissingAction"),
+    directAddFailureMessage: t("directAddFailureMessage", ["__TITLE__", "__ACTION__"]),
+    directAddSuccessMessage: t("directAddSuccessMessage"),
+    requestFailedFallback: t("requestFailedFallback"),
+    communicationFailureTitle: t("communicationFailureTitle"),
+    communicationFailureAction: t("communicationFailureAction"),
+    loginPermissionFailureTitle: t("loginPermissionFailureTitle"),
+    loginPermissionFailureAction: t("loginPermissionFailureAction"),
+    rateLimitedFailureTitle: t("rateLimitedFailureTitle"),
+    rateLimitedFailureAction: t("rateLimitedFailureAction"),
+    serverFailureTitle: t("serverFailureTitle"),
+    serverFailureAction: t("serverFailureAction"),
+    sourceRejectedFailureTitle: t("sourceRejectedFailureTitle"),
+    sourceRejectedFailureAction: t("sourceRejectedFailureAction"),
+    responseChangedFailureTitle: t("responseChangedFailureTitle"),
+    responseChangedFailureAction: t("responseChangedFailureAction"),
+    unknownFailureTitle: t("unknownFailureTitle"),
+    unknownFailureAction: t("unknownFailureAction"),
+    directAddStatusOkTitle: t("directAddStatusOkTitle"),
+    directAddStatusNgTitle: t("directAddStatusNgTitle"),
+    reasonNone: t("reasonNone"),
+    responseReceived: t("responseReceived"),
+    responseMissing: t("responseMissing")
+  };
+}
+
 async function addSourceToNotebookPage(input: {
   notebookUrl: string;
   notebookId: string;
   authuser?: string;
   source: CurrentPage;
+  messages: DirectAddPageMessages;
 }): Promise<NotebookDirectAddResult> {
   const html = document.documentElement.innerHTML;
   const at = /"SNlM0e":"([^"]+)"/.exec(html)?.[1];
@@ -647,8 +706,8 @@ async function addSourceToNotebookPage(input: {
   if (!at || !bl) {
     const failure: NotebookDirectAddFailure = {
       code: "token-missing",
-      title: "NotebookLMのログイン状態を確認できませんでした。",
-      action: "NotebookLMでログイン済みか、ページの読み込みが完了しているか確認してください。",
+      title: input.messages.tokenMissingTitle,
+      action: input.messages.tokenMissingAction,
       diagnostic: `missing tokens: at=${Boolean(at)}, bl=${Boolean(bl)}`
     };
     const result: NotebookDirectAddResult = {
@@ -666,7 +725,10 @@ async function addSourceToNotebookPage(input: {
         responseKind: "not-attempted"
       },
       failure,
-      message: `URL追加NG: ${failure.title} ${failure.action}`,
+      message: formatTemplate(input.messages.directAddFailureMessage, {
+        TITLE: failure.title,
+        ACTION: failure.action
+      }),
       checkedAt
     };
 
@@ -715,7 +777,7 @@ async function addSourceToNotebookPage(input: {
     rpcOk = response.ok && responseReceived;
   } catch (error) {
     responseKind = "request-error";
-    requestError = error instanceof Error ? error.message : "request failed";
+    requestError = error instanceof Error ? error.message : input.messages.requestFailedFallback;
     rpcOk = false;
   }
 
@@ -727,8 +789,11 @@ async function addSourceToNotebookPage(input: {
         requestError
       });
   const message = failure
-    ? `URL追加NG: ${failure.title} ${failure.action}`
-    : "URL追加OK: NotebookLMにソース追加RPCを送信しました。";
+    ? formatTemplate(input.messages.directAddFailureMessage, {
+        TITLE: failure.title,
+        ACTION: failure.action
+      })
+    : input.messages.directAddSuccessMessage;
 
   const result: NotebookDirectAddResult = {
     ok: rpcOk,
@@ -802,74 +867,74 @@ async function addSourceToNotebookPage(input: {
     return text.split("\n").slice(1).join("\n").trim();
   }
 
-  function getDirectAddFailure(input: {
+  function getDirectAddFailure(failureInput: {
     status?: number;
     responseKind: NotebookDirectAddResponseKind;
     requestError?: string;
   }): NotebookDirectAddFailure {
-    if (input.responseKind === "request-error") {
+    if (failureInput.responseKind === "request-error") {
       return {
         code: "request-error",
-        title: "NotebookLMへの通信に失敗しました。",
-        action: "ネットワーク状態を確認して、もう一度試してください。",
-        diagnostic: input.requestError ?? "fetch failed"
+        title: input.messages.communicationFailureTitle,
+        action: input.messages.communicationFailureAction,
+        diagnostic: failureInput.requestError ?? input.messages.requestFailedFallback
       };
     }
 
-    if (input.status === 401 || input.status === 403) {
+    if (failureInput.status === 401 || failureInput.status === 403) {
       return {
         code: "login-or-permission",
-        title: "NotebookLMにログインしていないか、このノートブックにアクセスできません。",
-        action: "NotebookLMタブでログイン状態と、登録したノートブックURLのGoogleアカウントを確認してください。",
-        diagnostic: `http ${input.status}`
+        title: input.messages.loginPermissionFailureTitle,
+        action: input.messages.loginPermissionFailureAction,
+        diagnostic: `http ${failureInput.status}`
       };
     }
 
-    if (input.status === 429) {
+    if (failureInput.status === 429) {
       return {
         code: "rate-limited",
-        title: "NotebookLM側で連続追加が制限された可能性があります。",
-        action: "少し時間を置いてから、もう一度試してください。",
+        title: input.messages.rateLimitedFailureTitle,
+        action: input.messages.rateLimitedFailureAction,
         diagnostic: "http 429"
       };
     }
 
-    if (typeof input.status === "number" && input.status >= 500) {
+    if (typeof failureInput.status === "number" && failureInput.status >= 500) {
       return {
         code: "server-error",
-        title: "NotebookLM側で一時的なエラーが起きた可能性があります。",
-        action: "NotebookLMタブを再読み込みするか、時間を置いて再試行してください。",
-        diagnostic: `http ${input.status}`
+        title: input.messages.serverFailureTitle,
+        action: input.messages.serverFailureAction,
+        diagnostic: `http ${failureInput.status}`
       };
     }
 
-    if (input.responseKind === "rpc-data-empty") {
+    if (failureInput.responseKind === "rpc-data-empty") {
       return {
         code: "source-rejected",
-        title: "NotebookLMは応答しましたが、ソース追加結果が空でした。",
-        action: "ノートブックのソース上限、保護されたページ、または非対応URLの可能性があります。",
-        diagnostic: `${input.responseKind}, http ${input.status ?? "n/a"}`
+        title: input.messages.sourceRejectedFailureTitle,
+        action: input.messages.sourceRejectedFailureAction,
+        diagnostic: `${failureInput.responseKind}, http ${failureInput.status ?? "n/a"}`
       };
     }
 
     if (
-      input.responseKind === "parse-error" ||
-      input.responseKind === "rpc-row-missing" ||
-      input.responseKind === "rpc-data-invalid"
+      failureInput.responseKind === "parse-error" ||
+      failureInput.responseKind === "rpc-row-missing" ||
+      failureInput.responseKind === "rpc-data-invalid"
     ) {
       return {
         code: "notebooklm-response-changed",
-        title: "NotebookLMの内部応答形式が想定と違います。",
-        action: "NotebookLM側の仕様変更の可能性があります。拡張機能側の更新が必要です。",
-        diagnostic: `${input.responseKind}, http ${input.status ?? "n/a"}`
+        title: input.messages.responseChangedFailureTitle,
+        action: input.messages.responseChangedFailureAction,
+        diagnostic: `${failureInput.responseKind}, http ${failureInput.status ?? "n/a"}`
       };
     }
 
     return {
       code: "unknown",
-      title: "NotebookLMへのソース追加RPCが成功しませんでした。",
-      action: "NotebookLMタブでソース一覧を確認してから、必要なら再試行してください。",
-      diagnostic: `${input.responseKind}, http ${input.status ?? "n/a"}`
+      title: input.messages.unknownFailureTitle,
+      action: input.messages.unknownFailureAction,
+      diagnostic: `${failureInput.responseKind}, http ${failureInput.status ?? "n/a"}`
     };
   }
 
@@ -906,7 +971,7 @@ async function addSourceToNotebookPage(input: {
       "13px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
 
     const title = document.createElement("strong");
-    title.textContent = result.ok ? "Read Later Is Broken: URL追加OK" : "Read Later Is Broken: URL追加NG";
+    title.textContent = result.ok ? input.messages.directAddStatusOkTitle : input.messages.directAddStatusNgTitle;
     title.style.display = "block";
     title.style.marginBottom = "6px";
 
@@ -914,9 +979,9 @@ async function addSourceToNotebookPage(input: {
     body.textContent = result.ok ? result.message : result.failure?.title ?? result.message;
 
     const meta = document.createElement("div");
-    meta.textContent = `reason=${result.failure?.code ?? "none"} / status=${
+    meta.textContent = `reason=${result.failure?.code ?? input.messages.reasonNone} / status=${
       result.rpc.status ?? "n/a"
-    } / response=${result.rpc.responseReceived ? "received" : result.rpc.responseKind ?? "missing"}`;
+    } / response=${result.rpc.responseReceived ? input.messages.responseReceived : result.rpc.responseKind ?? input.messages.responseMissing}`;
     meta.style.marginTop = "6px";
     meta.style.color = "#665f55";
     meta.style.fontSize = "12px";
@@ -926,6 +991,12 @@ async function addSourceToNotebookPage(input: {
     status.append(meta);
     document.body.append(status);
   }
+
+  function formatTemplate(template: string, values: Record<string, string>): string {
+    return Object.entries(values).reduce((formatted, [key, value]) => {
+      return formatted.replaceAll(`__${key}__`, value);
+    }, template);
+  }
 }
 
 function waitForTabComplete(tabId: number): Promise<void> {
@@ -933,7 +1004,7 @@ function waitForTabComplete(tabId: number): Promise<void> {
     let settled = false;
     const timeout = setTimeout(() => {
       finish();
-      reject(new Error("NotebookLM の読み込みがタイムアウトしました。"));
+      reject(new Error(t("notebookLoadTimeout")));
     }, 30000);
 
     const finish = (): void => {
@@ -1109,5 +1180,5 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "予期しないエラーが発生しました。";
+  return error instanceof Error ? error.message : t("unexpectedError");
 }

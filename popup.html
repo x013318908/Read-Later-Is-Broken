@@ -3,22 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Read Later Is Broken</title>
+    <title data-i18n="extensionName">Read Later Is Broken</title>
   </head>
   <body>
     <main id="app" class="popup-shell">
       <form id="digest-form" class="send-form">
         <fieldset class="target-group digest-group">
-          <legend>ダイジェスト</legend>
+          <legend data-i18n="digest">Digest</legend>
 
           <div class="action-row">
-            <button id="send-button" type="submit">NotebookLM に追加</button>
+            <button id="send-button" type="submit" data-i18n="addToNotebookLm">Add to NotebookLM</button>
           </div>
 
           <details class="digest-destination-settings">
-            <summary>保存先</summary>
+            <summary data-i18n="destinations">Destinations</summary>
 
-            <div class="extra-destination-list" aria-label="ダイジェスト用NotebookLMノートブック">
+            <div
+              class="extra-destination-list"
+              aria-label="Digest NotebookLM notebooks"
+              data-i18n-aria-label="digestNotebookListLabel"
+            >
               <label class="destination-check-row special-destination-row digest-destination-row">
                 <input id="daily-destination-enabled" type="checkbox" />
                 <span>
@@ -46,27 +50,38 @@
 
       <form id="theme-form" class="send-form">
         <fieldset class="target-group theme-group">
-          <legend>テーマ別</legend>
+          <legend data-i18n="theme">Theme</legend>
 
           <div class="destination-toolbar">
-            <button id="refresh-notebooks-button" type="button" class="secondary-button small">一覧を更新</button>
+            <button id="refresh-notebooks-button" type="button" class="secondary-button small" data-i18n="refreshNotebooks">
+              Refresh list
+            </button>
           </div>
 
           <div class="notebook-create-toolbar">
             <input
               id="destination-search"
               type="search"
-              aria-label="ノートブック検索・新規ノートブック名"
-              placeholder="ノートブックを検索 / 新規名"
+              aria-label="Notebook search and new notebook name"
+              placeholder="Search notebooks / new name"
+              data-i18n-aria-label="notebookSearchCreateLabel"
+              data-i18n-placeholder="notebookSearchCreatePlaceholder"
             />
-            <button id="create-notebook-button" type="button" class="secondary-button small">作成</button>
+            <button id="create-notebook-button" type="button" class="secondary-button small" data-i18n="create">
+              Create
+            </button>
           </div>
 
-          <div id="destination-list" class="destination-checklist" aria-label="登録済みNotebookLMノートブック"></div>
-          <div id="destination-count" class="destination-count" aria-live="polite">ノートブック 0件</div>
+          <div
+            id="destination-list"
+            class="destination-checklist"
+            aria-label="Registered NotebookLM notebooks"
+            data-i18n-aria-label="registeredNotebookListLabel"
+          ></div>
+          <div id="destination-count" class="destination-count" aria-live="polite">0 notebooks</div>
 
           <div class="action-row">
-            <button id="theme-send-button" type="submit">NotebookLM に追加</button>
+            <button id="theme-send-button" type="submit" data-i18n="addToNotebookLm">Add to NotebookLM</button>
           </div>
         </fieldset>
       </form>
@@ -75,7 +90,7 @@
       <p id="last-result" class="message last-result" role="status"></p>
 
       <footer>
-        Independent helper. Not affiliated with Google or NotebookLM.
+        <span data-i18n="footerDisclaimer">Independent helper. Not affiliated with Google or NotebookLM.</span>
       </footer>
     </main>
     <script type="module" src="/src/popup/main.ts"></script>
