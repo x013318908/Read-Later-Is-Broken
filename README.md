@@ -1,10 +1,8 @@
 # Read Later Is Broken
 
-Chrome 拡張の初期環境です。
+Read Later Is Broken is a Chrome extension for DeepReading: save pages to NotebookLM, listen when they matter, then ask better questions.
 
-「あとで読む」は読まれない。まず聴き、つぎに問う。
-
-この拡張は、閲覧中のページを NotebookLM のノートブックにソースとして追加するための補助ツールです。
+Read later is broken. Listen first. Ask later.
 
 This project is not affiliated with Google or NotebookLM.
 
@@ -12,16 +10,35 @@ This project is not affiliated with Google or NotebookLM.
 
 [Install from Chrome Web Store](https://chromewebstore.google.com/detail/read-later-is-broken/cllfneapemcmglbmdknppgancgdacgfi)
 
-## Setup
+## What It Does
+
+- Adds the current browser tab to selected NotebookLM notebooks.
+- Separates broad digest saving from focused theme saving.
+- Supports Daily, Weekly, and Monthly digest notebooks with fixed ISO-style names.
+- Lets you search existing NotebookLM notebooks and keep selected theme notebooks checked.
+- Lets you create a new NotebookLM notebook from the same search/title field.
+- Runs add jobs in the background, so the popup can be closed while NotebookLM processes the request.
+- Stores the last add result in the popup so persistent NotebookLM-side errors remain visible.
+- Uses Chrome UI language for the extension UI, with English and Japanese locale files.
+
+The extension adds pages as NotebookLM sources. It does not automatically generate Deep Dives or audio overviews.
+
+## DeepReading Flow
+
+1. Save the current page to digest or theme notebooks.
+2. Open NotebookLM when the notebook is worth attention.
+3. Generate a Deep Dive or ask follow-up questions inside NotebookLM.
+
+## Development Setup
 
 ```powershell
 npm install
 npm run build
 ```
 
-Chrome で `chrome://extensions` を開き、Developer mode を有効にして、`dist` フォルダを Load unpacked で読み込みます。
+Open `chrome://extensions`, enable Developer mode, and load the generated `dist` folder as an unpacked extension.
 
-開発中は次を実行すると、変更時に `dist` が再生成されます。
+For development builds:
 
 ```powershell
 npm run dev
@@ -29,44 +46,68 @@ npm run dev
 
 ## Current Scope
 
-- 拡張アイコンを押した時だけ、現在のタブ 1 件を対象にします。
-- 現在ページは popup 表示時に内部で取得し、選択した NotebookLM ノートブックへ追加します。
-- 保存済みの既存ノートブックが空の場合は、popup 表示時に NotebookLM のノートブック一覧を自動取得します。
-- popup の一覧更新ボタンから NotebookLM のノートブック一覧を再取得できます。
-- 拡張本体の表示言語は Chrome の UI 言語に合わせ、英語と日本語に対応します。
-- popup は、Daily / Weekly / Monthly へ雑に入れる「ダイジェスト」と、テーマ別の既存ノートブックへ入れる「テーマ別」に分かれています。
-- ダイジェスト側の `NotebookLM に追加` は Daily / Weekly / Monthly だけを対象にします。
-- ダイジェスト側の Daily / Weekly / Monthly チェックは `保存先` に折りたたみ、追加ボタンは常に表示します。
-- テーマ別側の `NotebookLM に追加` はチェック済みの登録済みノートブックだけを対象にします。
-- 登録済みノートブックのチェックリストはスクロール可能なグループとして表示し、選択した保存先へ NotebookLM タブを裏で最大 3 件ずつ開いて現在ページの URL をソースとして追加します。
-- 登録済みノートブックは検索・新規名入力欄で絞り込めます。チェック中のノートブックは検索条件に関係なく表示し、一覧更新・検索・作成後の表示ではチェック済みを上に並べます。
-- 新規ノートブックは `作成` ボタンで作成し、作成後に登録済みノートブック一覧へチェック済みで追加します。検索・新規名入力欄が空の場合は空のまま NotebookLM に渡します。
-- Daily / Weekly / Monthly チェック行には、ローカル日付に基づく `Daily yyyy-MM-dd`、`Weekly yyyy-Www`、`Monthly yyyy-MM` を表示し、そのノートブックにも現在ページの URL を追加します。
-- Daily / Weekly / Monthly ノートブックは同名があれば再利用し、なければ NotebookLM に新規作成します。各チェック状態は前回値を記録し、未記録時はオフです。
-- URL追加は background 側のジョブとして実行し、popup を閉じても処理を続けます。
-- 前回の追加結果は popup に表示します。NotebookLM 側の上限などで失敗した場合も、次に popup を開いたときに確認できます。
-- 複数追加では NotebookLM 側の取り込み結果を拡張側で断定せず、必要に応じて NotebookLM 側のソース一覧で確認します。
-- 命名テンプレート編集、URLパターンマッチング、複数タブ一括追加は行いません。
+- The extension targets one active browser tab at a time.
+- The popup fetches the current tab URL/title and sends that page to selected destinations.
+- If no saved destinations exist, the popup fetches the NotebookLM notebook list automatically.
+- The notebook list can be refreshed from the popup.
+- Digest mode targets only Daily / Weekly / Monthly notebooks.
+- Theme mode targets checked existing notebooks.
+- Checked notebooks remain visible even when the search query would otherwise filter them out.
+- List refresh, search, and notebook creation views place checked notebooks first; immediate check/uncheck actions do not reorder the list.
+- Daily / Weekly / Monthly notebooks use local dates and these names:
+  - `Daily yyyy-MM-dd`
+  - `Weekly yyyy-Www`
+  - `Monthly yyyy-MM`
+- Date notebooks are reused when a same-name notebook exists, and created when missing.
+- Duplicate URLs are intentionally inserted again because NotebookLM allows duplicates and imports the current page state.
 
-今後の候補や外した計画は `docs/roadmap.md` に残しています。
+Out of scope for now:
+
+- URL pattern matching
+- Custom naming templates
+- Multi-tab batch adds
+- Automatic Deep Dive or audio overview generation
+
+## Permissions
+
+The extension requests:
+
+- `activeTab`: read the current tab URL/title after the user opens the popup.
+- `scripting`: run bundled helper code in temporary NotebookLM tabs.
+- `storage`: store extension settings and the last add result in Chrome extension storage.
+- `https://notebooklm.google.com/*`: list, create, and add sources to NotebookLM notebooks.
+
+See [Permission Justifications](https://x013318908.github.io/Read-Later-Is-Broken/permissions.html) for the public review-facing explanation.
 
 ## GitHub Pages
 
-GitHub Pages は `main` ブランチの `docs/` を公開元にします。
+GitHub Pages is published from the `docs/` folder on the `main` branch:
 
-- `docs/index.html`: 公開ページのサンプル
-- `docs/privacy.html`: Chrome Web Store 用プライバシーポリシー
-- `docs/permissions.html`: Chrome Web Store 審査用の権限説明
-- `docs/assets/styles/`: GitHub Pages 用CSS
-- `docs/assets/screenshots/`: スクリーンショット置き場
-- `docs/roadmap.md`: 実装方針と今後のメモ
+- [Landing page](https://x013318908.github.io/Read-Later-Is-Broken/)
+- [Privacy Policy](https://x013318908.github.io/Read-Later-Is-Broken/privacy.html)
+- [Permission Justifications](https://x013318908.github.io/Read-Later-Is-Broken/permissions.html)
 
-GitHub 側では `Settings > Pages` で `Deploy from a branch`、Branch を `main`、Folder を `/docs` にします。
+Useful local files:
 
-## Files
+- `docs/index.html`: landing page
+- `docs/privacy.html`: Chrome Web Store privacy policy
+- `docs/permissions.html`: Chrome Web Store permission explanations
+- `docs/assets/screenshots/`: screenshots for Pages and store materials
+- `docs/assets/promotion_image/`: promotional images
+- `docs/roadmap.md`: project notes and deferred ideas
+
+## Project Files
 
 - `public/manifest.json`: Chrome Manifest V3
-- `public/_locales/*`: manifest と拡張UIの多言語リソース
-- `popup.html`, `src/popup/*`: 拡張アイコン押下時の UI
-- `src/shared/*`: storage と型定義
-- `src/background.ts`: service worker
+- `public/_locales/*`: manifest and extension UI localization resources
+- `public/icons/*`: extension icons
+- `popup.html`, `src/popup/*`: popup UI
+- `src/background.ts`: service worker and NotebookLM job handling
+- `src/shared/*`: shared types, storage, and i18n helpers
+- `src/styles/app.css`: popup styles
+
+## NotebookLM Limits To Keep In Mind
+
+NotebookLM limits depend on the user's plan. During development, Google AI Plus allowed up to 200 notebooks and up to 100 URL sources per notebook. When a limit is reached, add attempts can keep failing until notebooks or sources are removed in NotebookLM.
+
+The extension keeps the last result visible in the popup so these repeated failures are easier to notice.
