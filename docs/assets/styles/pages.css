@@ -141,14 +141,6 @@ a {
   background: var(--accent-strong);
 }
 
-.button.is-disabled {
-  cursor: default;
-}
-
-.button.is-disabled:hover {
-  background: var(--accent);
-}
-
 .button.secondary {
   background: var(--surface);
 }

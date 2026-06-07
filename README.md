@@ -8,6 +8,10 @@ Chrome 拡張の初期環境です。
 
 This project is not affiliated with Google or NotebookLM.
 
+## Install
+
+[Install from Chrome Web Store](https://chromewebstore.google.com/detail/read-later-is-broken/cllfneapemcmglbmdknppgancgdacgfi)
+
 ## Setup
 
 ```powershell
