@@ -101,7 +101,7 @@ async function initialize(): Promise<void> {
   try {
     const settings = await loadSettings();
     state.settings = settings;
-    renderDestinations(settings);
+    renderDestinations(settings, { selectedFirst: true });
     renderLastAddStatus(settings.lastAddStatus);
 
     if (settings.destinations.length === 0) {
