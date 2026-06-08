@@ -107,7 +107,7 @@ fieldset {
 
 .digest-group {
   border-color: rgba(44, 91, 80, 0.2);
-  background: rgba(236, 246, 241, 0.66);
+  background: #fff8;
 }
 
 .digest-destination-settings {
@@ -129,7 +129,7 @@ fieldset {
 }
 
 .theme-group {
-  background: rgba(255, 255, 255, 0.7);
+  background: #fff8;
 }
 
 legend {
