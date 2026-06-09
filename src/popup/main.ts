@@ -490,10 +490,11 @@ function getVisibleDestinations(
   selectedIds: Set<string>,
   searchQuery: string
 ): Destination[] {
-  const normalizedQuery = normalizeSearchText(searchQuery);
-  return normalizedQuery
+  const searchTerms = getSearchTerms(searchQuery);
+  return searchTerms.length > 0
     ? destinations.filter((destination) => {
-        return selectedIds.has(destination.id) || normalizeSearchText(destination.name).includes(normalizedQuery);
+        const destinationName = normalizeSearchText(destination.name);
+        return selectedIds.has(destination.id) || searchTerms.every((term) => destinationName.includes(term));
       })
     : destinations;
 }
@@ -546,6 +547,10 @@ function getDestinationSortName(name: string): string {
 
 function normalizeSearchText(value: string): string {
   return value.trim().toLocaleLowerCase(sortLocale);
+}
+
+function getSearchTerms(value: string): string[] {
+  return normalizeSearchText(value).split(/\s+/u).filter(Boolean);
 }
 
 function getSelectedDestinations(): Destination[] {
