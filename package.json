@@ -1,8 +1,8 @@
 {
   "name": "read-later-is-broken",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "Chrome extension scaffold for Read Later Is Broken.",
+  "description": "Chrome extension for saving current pages to NotebookLM notebooks.",
   "type": "module",
   "scripts": {
     "dev": "vite build --watch",

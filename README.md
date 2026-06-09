@@ -6,6 +6,8 @@ Read later is broken. Listen first. Ask later.
 
 This project is not affiliated with Google or NotebookLM.
 
+Current version: `1.0.0`
+
 ## Install
 
 [Install from Chrome Web Store](https://chromewebstore.google.com/detail/read-later-is-broken/cllfneapemcmglbmdknppgancgdacgfi)
@@ -17,6 +19,7 @@ This project is not affiliated with Google or NotebookLM.
 - Supports Daily, Weekly, and Monthly digest notebooks with fixed ISO-style names.
 - Lets you search existing NotebookLM notebooks and keep selected theme notebooks checked.
 - Lets you create a new NotebookLM notebook from the same search/title field.
+- Shows NotebookLM source counts for digest notebooks and saved theme notebooks.
 - Runs add jobs in the background, so the popup can be closed while NotebookLM processes the request.
 - Stores the last add result in the popup so persistent NotebookLM-side errors remain visible.
 - Uses Chrome UI language for the extension UI, with English and Japanese locale files.
@@ -53,7 +56,8 @@ npm run dev
 - Digest mode targets only Daily / Weekly / Monthly notebooks.
 - Theme mode targets checked existing notebooks.
 - Checked notebooks remain visible even when the search query would otherwise filter them out.
-- List refresh, search, and notebook creation views place checked notebooks first; immediate check/uncheck actions do not reorder the list.
+- Saved notebooks are sorted with checked notebooks first, then by notebook name. Leading emoji are ignored for sorting but still searchable.
+- Source counts are displayed as compact badges when available.
 - Daily / Weekly / Monthly notebooks use local dates and these names:
   - `Daily yyyy-MM-dd`
   - `Weekly yyyy-Www`
@@ -94,6 +98,7 @@ Useful local files:
 - `docs/permissions.html`: Chrome Web Store permission explanations
 - `docs/assets/screenshots/`: screenshots for Pages and store materials
 - `docs/assets/promotion_image/`: promotional images
+- `docs/release-notes-v1.0.0.md`: Chrome Web Store release note copy
 - `docs/roadmap.md`: project notes and deferred ideas
 
 ## Project Files
@@ -111,3 +116,13 @@ Useful local files:
 NotebookLM limits depend on the user's plan. During development, Google AI Plus allowed up to 200 notebooks and up to 100 URL sources per notebook. When a limit is reached, add attempts can keep failing until notebooks or sources are removed in NotebookLM.
 
 The extension keeps the last result visible in the popup so these repeated failures are easier to notice.
+
+## Release Notes
+
+### 1.0.0
+
+- Promoted the extension to the first stable release.
+- Added source count badges for digest notebooks and saved theme notebooks.
+- Improved saved notebook sorting: checked notebooks first, then name order, while keeping emoji searchable.
+- Improved NotebookLM communication handling so stalled list/add/create requests time out and the popup controls recover.
+- Disabled Enter submission in the shared search/new notebook name field because it is intentionally both a search field and a creation title field.
