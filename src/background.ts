@@ -24,6 +24,8 @@ import { t } from "./shared/i18n";
 import { rememberLastAddStatus, upsertDestination } from "./shared/storage";
 
 const MAX_PARALLEL_NOTEBOOK_ADDS = 3;
+const NOTEBOOKLM_AUTH_TIMEOUT_MS = 20_000;
+const NOTEBOOKLM_RPC_TIMEOUT_MS = 60_000;
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (isNotebookAddJobMessage(message)) {
@@ -135,7 +137,8 @@ async function handleNotebookAddJob(request: NotebookAddJobRequest): Promise<Not
       });
       await upsertDestination({
         name: result.title,
-        notebookUrl: result.notebookUrl
+        notebookUrl: result.notebookUrl,
+        sourceCount: result.sourceCount
       });
     } catch (error) {
       status.items.push({
@@ -236,6 +239,7 @@ async function handleNotebookCreate(request: NotebookCreateRequest): Promise<Not
     notebookId,
     notebookUrl,
     title,
+    sourceCount: 0,
     message: t("createdNotebookBackground"),
     checkedAt
   };
@@ -259,6 +263,8 @@ async function handleNotebookDateAdd(request: NotebookDateAddRequest): Promise<N
 
   const notebookUrl = buildNotebookUrl(notebookId, request.authuser);
   await addNotebookLmSources(authParams, notebookId, [request.source.url]);
+  const sourceCount =
+    existingNotebook?.sourceCount === undefined ? (created ? 1 : undefined) : existingNotebook.sourceCount + 1;
 
   const checkedAt = new Date().toISOString();
   return {
@@ -267,6 +273,7 @@ async function handleNotebookDateAdd(request: NotebookDateAddRequest): Promise<N
     notebookId,
     notebookUrl,
     title,
+    ...(sourceCount === undefined ? {} : { sourceCount }),
     source: request.source,
     created,
     message: t("dateNotebookAddComplete", [
@@ -302,9 +309,13 @@ async function loadNotebookLmAuthParams(authuser?: string): Promise<NotebookLmAu
     url.searchParams.set("authuser", authuser);
   }
 
-  const response = await fetch(url.toString(), {
-    credentials: "include"
-  });
+  const response = await fetchWithTimeout(
+    url.toString(),
+    {
+      credentials: "include"
+    },
+    NOTEBOOKLM_AUTH_TIMEOUT_MS
+  );
   const html = await response.text();
   const at = extractNotebookLmToken(html, "SNlM0e");
   const bl = extractNotebookLmToken(html, "cfb2h");
@@ -333,14 +344,18 @@ async function executeNotebookLmRpcs(
     "f.req": JSON.stringify([buildNotebookLmRpcRows(rpcs)]),
     at: authParams.at
   });
-  const response = await fetch(url.toString(), {
-    method: "POST",
-    headers: {
-      "content-type": "application/x-www-form-urlencoded;charset=utf-8"
+  const response = await fetchWithTimeout(
+    url.toString(),
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded;charset=utf-8"
+      },
+      body,
+      credentials: "include"
     },
-    body,
-    credentials: "include"
-  });
+    NOTEBOOKLM_RPC_TIMEOUT_MS
+  );
   const responseText = await response.text();
 
   if (!response.ok) {
@@ -348,6 +363,32 @@ async function executeNotebookLmRpcs(
   }
 
   return parseNotebookLmRpcResponses(responseText);
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw new Error(t("notebookLoadTimeout"));
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
 }
 
 function buildNotebookLmRpcRows(rpcs: NotebookLmRpcRequest[]): unknown[][] {
@@ -412,6 +453,7 @@ function parseNotebookListItem(row: unknown, authuser?: string): NotebookListIte
 
   const title = typeof row[0] === "string" && row[0].trim() ? row[0].trim() : t("untitledNotebook");
   const emoji = typeof row[3] === "string" && row[3].trim() ? row[3].trim() : undefined;
+  const sourceCount = parseNotebookSourceCount(row);
   const updatedAtMs = parseNotebookUpdatedAtMs(row);
 
   return [
@@ -420,9 +462,30 @@ function parseNotebookListItem(row: unknown, authuser?: string): NotebookListIte
       title,
       emoji,
       notebookUrl: buildNotebookUrl(row[2], authuser),
+      ...(sourceCount === undefined ? {} : { sourceCount }),
       ...(updatedAtMs === undefined ? {} : { updatedAtMs })
     }
   ];
+}
+
+function parseNotebookSourceCount(row: unknown[]): number | undefined {
+  const sources = row[1];
+
+  if (!Array.isArray(sources)) {
+    return undefined;
+  }
+
+  return sources.filter(isNotebookSourceListItem).length;
+}
+
+function isNotebookSourceListItem(value: unknown): boolean {
+  if (!Array.isArray(value)) {
+    return false;
+  }
+
+  const metadata = value[2];
+
+  return Array.isArray(metadata) && metadata[3] !== undefined && metadata[3] !== null;
 }
 
 function parseNotebookUpdatedAtMs(row: unknown[]): number | undefined {

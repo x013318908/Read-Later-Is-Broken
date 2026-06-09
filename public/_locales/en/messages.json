@@ -51,6 +51,14 @@
       }
     }
   },
+  "sourceCount": {
+    "message": "$COUNT$ sources",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
   "footerDisclaimer": {
     "message": "Independent helper. Not affiliated with Google or NotebookLM."
   },

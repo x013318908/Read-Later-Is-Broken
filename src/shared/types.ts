@@ -2,6 +2,7 @@ export interface Destination {
   id: string;
   name: string;
   notebookUrl: string;
+  sourceCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -79,6 +80,7 @@ export interface NotebookCreateResult {
   notebookId: string;
   notebookUrl: string;
   title: string;
+  sourceCount?: number;
   message: string;
   checkedAt: string;
 }
@@ -95,6 +97,7 @@ export interface NotebookDateAddResult {
   notebookId: string;
   notebookUrl: string;
   title: string;
+  sourceCount?: number;
   source: CurrentPage;
   created: boolean;
   message: string;
@@ -117,6 +120,7 @@ export interface NotebookListItem {
   title: string;
   emoji?: string;
   notebookUrl: string;
+  sourceCount?: number;
   updatedAtMs?: number;
 }
 

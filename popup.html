@@ -16,7 +16,10 @@
           </div>
 
           <details class="digest-destination-settings">
-            <summary data-i18n="destinations">Destinations</summary>
+            <summary class="digest-destination-summary">
+              <span id="digest-destination-summary-label" data-i18n="destinations">Destinations</span>
+              <span id="digest-destination-summary-counts" class="digest-summary-counts"></span>
+            </summary>
 
             <div
               class="extra-destination-list"
@@ -26,21 +29,30 @@
               <label class="destination-check-row special-destination-row digest-destination-row">
                 <input id="daily-destination-enabled" type="checkbox" />
                 <span>
-                  <strong id="daily-title">Daily yyyy-MM-dd</strong>
+                  <span class="destination-name-line">
+                    <strong id="daily-title">Daily yyyy-MM-dd</strong>
+                    <span id="daily-source-count" class="source-count-badge" hidden></span>
+                  </span>
                 </span>
               </label>
 
               <label class="destination-check-row special-destination-row digest-destination-row">
                 <input id="weekly-destination-enabled" type="checkbox" />
                 <span>
-                  <strong id="weekly-title">Weekly yyyy-Www</strong>
+                  <span class="destination-name-line">
+                    <strong id="weekly-title">Weekly yyyy-Www</strong>
+                    <span id="weekly-source-count" class="source-count-badge" hidden></span>
+                  </span>
                 </span>
               </label>
 
               <label class="destination-check-row special-destination-row digest-destination-row">
                 <input id="monthly-destination-enabled" type="checkbox" />
                 <span>
-                  <strong id="monthly-title">Monthly yyyy-MM</strong>
+                  <span class="destination-name-line">
+                    <strong id="monthly-title">Monthly yyyy-MM</strong>
+                    <span id="monthly-source-count" class="source-count-badge" hidden></span>
+                  </span>
                 </span>
               </label>
             </div>

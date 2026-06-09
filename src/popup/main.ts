@@ -4,6 +4,7 @@ import {
   rememberPopupTargetSettings,
   rememberSelectedDestinations,
   replaceDestinations,
+  saveSettings,
   upsertDestination
 } from "../shared/storage";
 import { applyDocumentI18n, getUiLanguage, t } from "../shared/i18n";
@@ -34,6 +35,10 @@ const state: {
 };
 
 const sortLocale = getUiLanguage();
+const LIST_MESSAGE_TIMEOUT_MS = 60_000;
+const CREATE_MESSAGE_TIMEOUT_MS = 60_000;
+const ADD_JOB_MESSAGE_TIMEOUT_MS = 180_000;
+let notebookListSyncRunId = 0;
 
 const elements = {
   digestForm: getElement<HTMLFormElement>("digest-form"),
@@ -42,12 +47,16 @@ const elements = {
   refreshNotebooksButton: getElement<HTMLButtonElement>("refresh-notebooks-button"),
   destinationList: getElement<HTMLDivElement>("destination-list"),
   destinationCount: getElement<HTMLDivElement>("destination-count"),
+  digestDestinationSummaryCounts: getElement<HTMLElement>("digest-destination-summary-counts"),
   dailyDestinationEnabled: getElement<HTMLInputElement>("daily-destination-enabled"),
   dailyTitle: getElement<HTMLElement>("daily-title"),
+  dailySourceCount: getElement<HTMLElement>("daily-source-count"),
   weeklyDestinationEnabled: getElement<HTMLInputElement>("weekly-destination-enabled"),
   weeklyTitle: getElement<HTMLElement>("weekly-title"),
+  weeklySourceCount: getElement<HTMLElement>("weekly-source-count"),
   monthlyDestinationEnabled: getElement<HTMLInputElement>("monthly-destination-enabled"),
   monthlyTitle: getElement<HTMLElement>("monthly-title"),
+  monthlySourceCount: getElement<HTMLElement>("monthly-source-count"),
   createNotebookButton: getElement<HTMLButtonElement>("create-notebook-button"),
   sendButton: getElement<HTMLButtonElement>("send-button"),
   themeSendButton: getElement<HTMLButtonElement>("theme-send-button"),
@@ -62,7 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
 async function initialize(): Promise<void> {
   document.documentElement.lang = sortLocale;
   applyDocumentI18n();
-  applyDateNotebookTitles();
+  renderDateNotebookTitles(state.settings);
 
   elements.digestForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -71,6 +80,10 @@ async function initialize(): Promise<void> {
 
   elements.themeForm.addEventListener("submit", (event) => {
     event.preventDefault();
+    if (event.submitter !== elements.themeSendButton) {
+      return;
+    }
+
     void handleThemeSubmit();
   });
 
@@ -84,7 +97,13 @@ async function initialize(): Promise<void> {
 
   elements.destinationSearch.addEventListener("input", () => {
     state.searchQuery = elements.destinationSearch.value;
-    renderDestinations(state.settings, { selectedFirst: true });
+    renderDestinations(state.settings);
+  });
+  elements.destinationSearch.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.isComposing) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
   });
 
   [
@@ -93,19 +112,23 @@ async function initialize(): Promise<void> {
     elements.monthlyDestinationEnabled
   ].forEach((input) => {
     input.addEventListener("change", () => {
-      void rememberTargetSettingsFromForm();
+      void rememberTargetSettingsFromForm().then((settings) => {
+        renderDateNotebookTitles(settings);
+      });
       updateSendButtonLabel();
     });
   });
 
   try {
     const settings = await loadSettings();
-    state.settings = settings;
-    renderDestinations(settings, { selectedFirst: true });
-    renderLastAddStatus(settings.lastAddStatus);
+    state.settings = await saveSortedDestinationOrder(settings);
+    renderDestinations(state.settings);
+    renderLastAddStatus(state.settings.lastAddStatus);
 
-    if (settings.destinations.length === 0) {
-      await refreshNotebookList({ auto: true });
+    if (state.settings.destinations.length === 0) {
+      await refreshNotebookList({ auto: true, sortDestinations: true });
+    } else {
+      void refreshNotebookList({ auto: true, silent: true });
     }
   } catch (error) {
     showMessage(getErrorMessage(error), "danger");
@@ -122,39 +145,70 @@ async function initialize(): Promise<void> {
 
 async function refreshNotebookList(options: {
   auto?: boolean;
+  silent?: boolean;
+  sortDestinations?: boolean;
   preserveDestinations?: Destination[];
   startMessage?: string;
   completeMessage?: string;
 } = {}): Promise<void> {
-  elements.refreshNotebooksButton.disabled = true;
-  showMessage(
-    options.startMessage ??
-      (options.auto
-        ? t("loadingNotebookList")
-        : t("refreshingNotebookList")),
-    "neutral"
-  );
+  const syncRunId = ++notebookListSyncRunId;
+
+  if (!options.silent) {
+    elements.refreshNotebooksButton.disabled = true;
+  }
+
+  if (!options.silent) {
+    showMessage(
+      options.startMessage ??
+        (options.auto
+          ? t("loadingNotebookList")
+          : t("refreshingNotebookList")),
+      "neutral"
+    );
+  }
 
   try {
-    const result = await syncNotebookList(options.preserveDestinations ?? []);
+    const result = await syncNotebookList({
+      preserveDestinations: options.preserveDestinations ?? [],
+      sortDestinations: options.sortDestinations ?? options.silent !== true
+    });
+
+    if (syncRunId !== notebookListSyncRunId) {
+      return;
+    }
+
     state.settings = result.settings;
-    renderDestinations(state.settings, { selectedFirst: true });
-    showMessage(options.completeMessage ?? t("loadedNotebookList", [String(result.notebookCount)]), "neutral");
+    renderDestinations(state.settings);
+    if (!options.silent) {
+      showMessage(options.completeMessage ?? t("loadedNotebookList", [String(result.notebookCount)]), "neutral");
+    }
   } catch (error) {
-    showMessage(getErrorMessage(error), "danger");
+    if (options.silent) {
+      console.warn("Read Later Is Broken: NotebookLM list sync failed.", getErrorMessage(error));
+    } else {
+      showMessage(getErrorMessage(error), "danger");
+    }
   } finally {
-    elements.refreshNotebooksButton.disabled = false;
+    if (!options.silent && syncRunId === notebookListSyncRunId) {
+      elements.refreshNotebooksButton.disabled = false;
+    }
   }
 }
 
-async function syncNotebookList(preserveDestinations: Destination[] = []): Promise<{
+async function syncNotebookList(options: {
+  preserveDestinations?: Destination[];
+  sortDestinations?: boolean;
+} = {}): Promise<{
   settings: AppSettings;
   notebookCount: number;
 }> {
-  const response = await chrome.runtime.sendMessage({
-    type: "listNotebookLmNotebooks",
-    payload: {}
-  });
+  const response = await sendMessageWithTimeout(
+    {
+      type: "listNotebookLmNotebooks",
+      payload: {}
+    },
+    LIST_MESSAGE_TIMEOUT_MS
+  );
 
   if (!isNotebookListResponse(response)) {
     throw new Error(t("notebookListUnreadable"));
@@ -166,21 +220,25 @@ async function syncNotebookList(preserveDestinations: Destination[] = []): Promi
 
   const notebookInputs = response.result.notebooks.map((notebook) => ({
     name: formatNotebookName(notebook),
-    notebookUrl: notebook.notebookUrl
+    notebookUrl: notebook.notebookUrl,
+    sourceCount: notebook.sourceCount
   }));
   const notebookUrls = new Set(notebookInputs.map((notebook) => notebook.notebookUrl));
 
-  for (const destination of preserveDestinations) {
+  for (const destination of options.preserveDestinations ?? []) {
     if (!notebookUrls.has(destination.notebookUrl)) {
       notebookInputs.push({
         name: destination.name,
-        notebookUrl: destination.notebookUrl
+        notebookUrl: destination.notebookUrl,
+        sourceCount: destination.sourceCount
       });
     }
   }
 
+  const settings = await replaceDestinations(notebookInputs);
+
   return {
-    settings: await replaceDestinations(notebookInputs),
+    settings: options.sortDestinations === false ? settings : await saveSortedDestinationOrder(settings),
     notebookCount: response.result.notebooks.length
   };
 }
@@ -238,12 +296,15 @@ async function handleCreateNotebook(): Promise<void> {
   showMessage(t("creatingNotebook"), "neutral");
 
   try {
-    const response = await chrome.runtime.sendMessage({
-      type: "createNotebookLmNotebook",
-      payload: {
-        title
-      }
-    });
+    const response = await sendMessageWithTimeout(
+      {
+        type: "createNotebookLmNotebook",
+        payload: {
+          title
+        }
+      },
+      CREATE_MESSAGE_TIMEOUT_MS
+    );
 
     if (!isNotebookCreateResponse(response)) {
       throw new Error(t("createNotebookResultUnreadable"));
@@ -255,7 +316,8 @@ async function handleCreateNotebook(): Promise<void> {
 
     const optimisticSettings = await upsertDestination({
       name: getNewNotebookDisplayName(response.result.title),
-      notebookUrl: response.result.notebookUrl
+      notebookUrl: response.result.notebookUrl,
+      sourceCount: response.result.sourceCount
     });
     const createdDestination = optimisticSettings.destinations.find(
       (destination) => destination.notebookUrl === response.result.notebookUrl
@@ -264,14 +326,17 @@ async function handleCreateNotebook(): Promise<void> {
     state.settings = createdDestination
       ? await rememberSelectedDestinations([...selectedIds, createdDestination.id])
       : optimisticSettings;
-    renderDestinations(state.settings, { selectedFirst: true });
+    renderDestinations(state.settings);
     showMessage(t("notebookCreatedRefreshing"), "neutral");
 
     if (createdDestination) {
       try {
-        const result = await syncNotebookList([createdDestination]);
+        const result = await syncNotebookList({
+          preserveDestinations: [createdDestination],
+          sortDestinations: true
+        });
         state.settings = result.settings;
-        renderDestinations(state.settings, { selectedFirst: true });
+        renderDestinations(state.settings);
         showMessage(t("notebookCreated"), "success");
       } catch (error) {
         showMessage(t("notebookCreatedRefreshFailed", [getErrorMessage(error)]), "danger");
@@ -295,14 +360,17 @@ async function runNotebookAddJob(input: {
     state.settings = await rememberSelectedDestinations(getSelectedDestinationIdsFromForm());
     state.settings = await rememberTargetSettingsFromForm();
     showMessage(input.startMessage, "neutral");
-    const response = await chrome.runtime.sendMessage({
-      type: "runNotebookAddJob",
-      payload: {
-        source: state.currentPage,
-        existingTargets: input.existingTargets,
-        datePeriods: input.datePeriods
-      }
-    });
+    const response = await sendMessageWithTimeout(
+      {
+        type: "runNotebookAddJob",
+        payload: {
+          source: state.currentPage,
+          existingTargets: input.existingTargets,
+          datePeriods: input.datePeriods
+        }
+      },
+      ADD_JOB_MESSAGE_TIMEOUT_MS
+    );
 
     if (!isAddJobResponse(response)) {
       throw new Error(t("notebookAddResultUnreadable"));
@@ -316,6 +384,7 @@ async function runNotebookAddJob(input: {
     renderDestinations(state.settings);
     renderLastAddStatus(response.result.status);
     showMessage(response.result.status.message, getStatusMessageVariant(response.result.status));
+    void refreshNotebookList({ auto: true, silent: true });
   } catch (error) {
     showMessage(getErrorMessage(error), "danger");
   } finally {
@@ -336,12 +405,13 @@ async function getCurrentPage(): Promise<CurrentPage> {
   };
 }
 
-function renderDestinations(settings: AppSettings, options: { selectedFirst?: boolean } = {}): void {
+function renderDestinations(settings: AppSettings): void {
   elements.destinationList.replaceChildren();
   elements.destinationCount.textContent = t("notebookCount", [String(settings.destinations.length)]);
   elements.dailyDestinationEnabled.checked = settings.dailyDestinationEnabled;
   elements.weeklyDestinationEnabled.checked = settings.weeklyDestinationEnabled;
   elements.monthlyDestinationEnabled.checked = settings.monthlyDestinationEnabled;
+  renderDateNotebookTitles(settings);
 
   if (settings.destinations.length === 0) {
     const empty = document.createElement("div");
@@ -356,8 +426,7 @@ function renderDestinations(settings: AppSettings, options: { selectedFirst?: bo
   const visibleDestinations = getVisibleDestinations(
     settings.destinations,
     selectedIds,
-    state.searchQuery,
-    options.selectedFirst === true
+    state.searchQuery
   );
 
   if (visibleDestinations.length === 0) {
@@ -387,7 +456,17 @@ function renderDestinations(settings: AppSettings, options: { selectedFirst?: bo
     const name = document.createElement("strong");
     name.textContent = destination.name;
 
-    text.append(name);
+    const nameLine = document.createElement("span");
+    nameLine.className = "destination-name-line";
+
+    nameLine.append(name);
+
+    const sourceCount = createSourceCountBadge(destination.sourceCount);
+    if (sourceCount) {
+      nameLine.append(sourceCount);
+    }
+
+    text.append(nameLine);
     label.append(checkbox, text);
     elements.destinationList.append(label);
   }
@@ -409,17 +488,31 @@ function getInitialSelectedDestinationIds(settings: AppSettings): string[] {
 function getVisibleDestinations(
   destinations: Destination[],
   selectedIds: Set<string>,
-  searchQuery: string,
-  selectedFirst: boolean
+  searchQuery: string
 ): Destination[] {
   const normalizedQuery = normalizeSearchText(searchQuery);
-  const visibleDestinations = normalizedQuery
+  return normalizedQuery
     ? destinations.filter((destination) => {
         return selectedIds.has(destination.id) || normalizeSearchText(destination.name).includes(normalizedQuery);
       })
     : destinations;
+}
 
-  return selectedFirst ? sortDestinationsForDisplay(visibleDestinations, selectedIds) : visibleDestinations;
+async function saveSortedDestinationOrder(settings: AppSettings): Promise<AppSettings> {
+  const selectedIds = new Set(getInitialSelectedDestinationIds(settings));
+  const destinations = sortDestinationsForDisplay(settings.destinations, selectedIds);
+
+  if (destinations.every((destination, index) => destination.id === settings.destinations[index]?.id)) {
+    return settings;
+  }
+
+  const nextSettings = {
+    ...settings,
+    destinations
+  };
+
+  await saveSettings(nextSettings);
+  return nextSettings;
 }
 
 function sortDestinationsForDisplay(destinations: Destination[], selectedIds: Set<string>): Destination[] {
@@ -430,7 +523,7 @@ function sortDestinationsForDisplay(destinations: Destination[], selectedIds: Se
       return selectedComparison;
     }
 
-    const nameComparison = a.name.localeCompare(b.name, sortLocale, {
+    const nameComparison = getDestinationSortName(a.name).localeCompare(getDestinationSortName(b.name), sortLocale, {
       numeric: true,
       sensitivity: "base"
     });
@@ -441,6 +534,14 @@ function sortDestinationsForDisplay(destinations: Destination[], selectedIds: Se
 
     return a.notebookUrl.localeCompare(b.notebookUrl);
   });
+}
+
+function getDestinationSortName(name: string): string {
+  const withoutLeadingEmoji = name
+    .trimStart()
+    .replace(/^(?:\p{Extended_Pictographic}[\uFE0E\uFE0F]?(?:\u200D\p{Extended_Pictographic}[\uFE0E\uFE0F]?)*\s*)+/u, "");
+
+  return withoutLeadingEmoji.trimStart() || name;
 }
 
 function normalizeSearchText(value: string): string {
@@ -529,10 +630,75 @@ function getEnabledDateNotebookPeriods(): DateNotebookPeriod[] {
   return periods;
 }
 
-function applyDateNotebookTitles(date = new Date()): void {
-  elements.dailyTitle.textContent = getDateNotebookTitle("daily", date);
-  elements.weeklyTitle.textContent = getDateNotebookTitle("weekly", date);
-  elements.monthlyTitle.textContent = getDateNotebookTitle("monthly", date);
+function renderDateNotebookTitles(settings: AppSettings, date = new Date()): void {
+  renderDateNotebookTitle("daily", elements.dailyTitle, elements.dailySourceCount, settings, date);
+  renderDateNotebookTitle("weekly", elements.weeklyTitle, elements.weeklySourceCount, settings, date);
+  renderDateNotebookTitle("monthly", elements.monthlyTitle, elements.monthlySourceCount, settings, date);
+  renderDigestDestinationSummaryCounts(settings, date);
+}
+
+function renderDigestDestinationSummaryCounts(settings: AppSettings, date: Date): void {
+  elements.digestDestinationSummaryCounts.replaceChildren();
+
+  for (const period of getEnabledDateNotebookPeriods()) {
+    const sourceCount = getDateNotebookSourceCount(settings, getDateNotebookTitle(period, date));
+    const badge = createSourceCountBadge(sourceCount);
+
+    if (badge) {
+      elements.digestDestinationSummaryCounts.append(badge);
+    }
+  }
+}
+
+function renderDateNotebookTitle(
+  period: DateNotebookPeriod,
+  titleElement: HTMLElement,
+  sourceCountElement: HTMLElement,
+  settings: AppSettings,
+  date: Date
+): void {
+  const title = getDateNotebookTitle(period, date);
+  const sourceCount = getDateNotebookSourceCount(settings, title);
+
+  titleElement.textContent = title;
+  renderSourceCountElement(sourceCountElement, sourceCount);
+}
+
+function getDateNotebookSourceCount(settings: AppSettings, title: string): number | undefined {
+  const destination = settings.destinations.find(
+    (candidate) => isDateNotebookName(candidate.name, title) && candidate.sourceCount !== undefined
+  );
+
+  return destination?.sourceCount;
+}
+
+function isDateNotebookName(name: string, title: string): boolean {
+  return name === title || name.endsWith(` ${title}`);
+}
+
+function createSourceCountBadge(sourceCount: number | undefined): HTMLElement | undefined {
+  if (sourceCount === undefined) {
+    return undefined;
+  }
+
+  const element = document.createElement("span");
+  element.className = "source-count-badge";
+  renderSourceCountElement(element, sourceCount);
+
+  return element;
+}
+
+function renderSourceCountElement(element: HTMLElement, sourceCount: number | undefined): void {
+  if (sourceCount === undefined) {
+    element.textContent = "";
+    element.removeAttribute("title");
+    element.setAttribute("hidden", "");
+    return;
+  }
+
+  element.textContent = String(sourceCount);
+  element.title = t("sourceCount", [String(sourceCount)]);
+  element.removeAttribute("hidden");
 }
 
 function getDateNotebookTitle(period: DateNotebookPeriod, date = new Date()): string {
@@ -587,6 +753,33 @@ function showMessage(message: string, variant: "neutral" | "success" | "danger")
   elements.message.dataset.variant = variant;
 }
 
+function sendMessageWithTimeout(message: unknown, timeoutMs: number): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timeoutId = setTimeout(() => {
+      settled = true;
+      reject(new Error(t("notebookLoadTimeout")));
+    }, timeoutMs);
+
+    chrome.runtime.sendMessage(message, (response: unknown) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearTimeout(timeoutId);
+
+      const error = chrome.runtime.lastError;
+      if (error) {
+        reject(new Error(error.message));
+        return;
+      }
+
+      resolve(response);
+    });
+  });
+}
+
 function getElement<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
 
@@ -626,6 +819,7 @@ function isNotebookCreateResponse(value: unknown): value is
         typeof value.result.notebookId === "string" &&
         typeof value.result.notebookUrl === "string" &&
         typeof value.result.title === "string" &&
+        (value.result.sourceCount === undefined || isNonNegativeInteger(value.result.sourceCount)) &&
         typeof value.result.message === "string" &&
         typeof value.result.checkedAt === "string"
     : typeof value.error === "string";
@@ -658,4 +852,8 @@ function isNotebookListResponse(value: unknown): value is
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }

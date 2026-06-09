@@ -124,6 +124,23 @@ fieldset {
   line-height: 1.35;
 }
 
+.digest-destination-summary {
+  align-items: center;
+  gap: 6px;
+}
+
+.digest-destination-summary::marker {
+  color: #4f5b54;
+}
+
+.digest-summary-counts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 .digest-destination-settings[open] summary {
   margin-bottom: 8px;
 }
@@ -164,19 +181,45 @@ legend {
 }
 
 .destination-check-row strong,
-.destination-label,
-.destination-check-row small {
-  display: block;
-}
-
-.destination-check-row strong,
 .destination-label {
-  margin: 4px 0 2px;
   color: #25221e;
   font-size: 12px;
   font-weight: 800;
   line-height: 1.35;
   text-box-trim: trim-both;
+}
+
+.destination-check-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.destination-name-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 4px 0 2px;
+}
+
+.source-count-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  min-height: 18px;
+  border-radius: 999px;
+  padding: 0 6px;
+  background: rgba(44, 91, 80, 0.13);
+  color: #2c5b50;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.source-count-badge[hidden] {
+  display: none;
 }
 
 .destination-label {

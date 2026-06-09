@@ -1,6 +1,7 @@
 import type { AddJobStatusItem, AppSettings, CurrentPage, Destination, LastAddStatus } from "./types";
 
 const STORAGE_KEY = "settings";
+type DestinationInput = Pick<Destination, "name" | "notebookUrl"> & Partial<Pick<Destination, "sourceCount">>;
 
 const DEFAULT_SETTINGS: AppSettings = {
   destinations: [],
@@ -18,7 +19,7 @@ export function saveSettings(settings: AppSettings): Promise<void> {
   return setStorageValue(chrome.storage.local, normalizeSettings(settings));
 }
 
-export async function upsertDestination(input: Pick<Destination, "name" | "notebookUrl">): Promise<AppSettings> {
+export async function upsertDestination(input: DestinationInput): Promise<AppSettings> {
   const settings = await loadSettings();
   const now = new Date().toISOString();
   const existing = settings.destinations.find((destination) => destination.notebookUrl === input.notebookUrl);
@@ -26,7 +27,16 @@ export async function upsertDestination(input: Pick<Destination, "name" | "noteb
   const destinations = existing
     ? settings.destinations.map((destination) =>
         destination.id === existing.id
-          ? { ...destination, name: input.name, updatedAt: now }
+          ? {
+              ...destination,
+              name: input.name,
+              ...(input.sourceCount === undefined ? {} : { sourceCount: input.sourceCount }),
+              updatedAt:
+                destination.name === input.name &&
+                (input.sourceCount === undefined || destination.sourceCount === input.sourceCount)
+                  ? destination.updatedAt
+                  : now
+            }
           : destination
       )
     : [
@@ -35,6 +45,7 @@ export async function upsertDestination(input: Pick<Destination, "name" | "noteb
           id: crypto.randomUUID(),
           name: input.name,
           notebookUrl: input.notebookUrl,
+          ...(input.sourceCount === undefined ? {} : { sourceCount: input.sourceCount }),
           createdAt: now,
           updatedAt: now
         }
@@ -49,14 +60,32 @@ export async function upsertDestination(input: Pick<Destination, "name" | "noteb
   return nextSettings;
 }
 
-export async function replaceDestinations(inputs: Array<Pick<Destination, "name" | "notebookUrl">>): Promise<AppSettings> {
+export async function replaceDestinations(inputs: DestinationInput[]): Promise<AppSettings> {
   const settings = await loadSettings();
   const now = new Date().toISOString();
-  const existingByUrl = new Map(
-    settings.destinations.map((destination) => [destination.notebookUrl, destination])
-  );
+  const inputByUrl = new Map<string, DestinationInput>();
   const destinationUrls = new Set<string>();
+
+  for (const input of inputs) {
+    if (inputByUrl.has(input.notebookUrl)) {
+      continue;
+    }
+
+    inputByUrl.set(input.notebookUrl, input);
+  }
+
   const destinations: Destination[] = [];
+
+  for (const existing of settings.destinations) {
+    const input = inputByUrl.get(existing.notebookUrl);
+
+    if (!input || destinationUrls.has(existing.notebookUrl)) {
+      continue;
+    }
+
+    destinationUrls.add(existing.notebookUrl);
+    destinations.push(buildUpdatedDestination(existing, input, now));
+  }
 
   for (const input of inputs) {
     if (destinationUrls.has(input.notebookUrl)) {
@@ -64,22 +93,7 @@ export async function replaceDestinations(inputs: Array<Pick<Destination, "name"
     }
 
     destinationUrls.add(input.notebookUrl);
-    const existing = existingByUrl.get(input.notebookUrl);
-    destinations.push(
-      existing
-        ? {
-            ...existing,
-            name: input.name,
-            updatedAt: existing.name === input.name ? existing.updatedAt : now
-          }
-        : {
-            id: crypto.randomUUID(),
-            name: input.name,
-            notebookUrl: input.notebookUrl,
-            createdAt: now,
-            updatedAt: now
-          }
-    );
+    destinations.push(buildNewDestination(input, now));
   }
 
   const destinationIds = new Set(destinations.map((destination) => destination.id));
@@ -93,6 +107,28 @@ export async function replaceDestinations(inputs: Array<Pick<Destination, "name"
 
   await saveSettings(nextSettings);
   return nextSettings;
+}
+
+function buildUpdatedDestination(existing: Destination, input: DestinationInput, now: string): Destination {
+  const sourceCount = input.sourceCount ?? existing.sourceCount;
+
+  return {
+    ...existing,
+    name: input.name,
+    ...(sourceCount === undefined ? {} : { sourceCount }),
+    updatedAt: existing.name === input.name && existing.sourceCount === sourceCount ? existing.updatedAt : now
+  };
+}
+
+function buildNewDestination(input: DestinationInput, now: string): Destination {
+  return {
+    id: crypto.randomUUID(),
+    name: input.name,
+    notebookUrl: input.notebookUrl,
+    ...(input.sourceCount === undefined ? {} : { sourceCount: input.sourceCount }),
+    createdAt: now,
+    updatedAt: now
+  };
 }
 
 export async function rememberSelectedDestinations(ids: string[]): Promise<AppSettings> {
@@ -214,9 +250,14 @@ function isDestination(value: unknown): value is Destination {
     typeof value.id === "string" &&
     typeof value.name === "string" &&
     typeof value.notebookUrl === "string" &&
+    (value.sourceCount === undefined || isNonNegativeInteger(value.sourceCount)) &&
     typeof value.createdAt === "string" &&
     typeof value.updatedAt === "string"
   );
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }
 
 function isLastAddStatus(value: unknown): value is LastAddStatus {
