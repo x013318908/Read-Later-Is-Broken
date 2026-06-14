@@ -117,6 +117,10 @@ NotebookLM limits depend on the user's plan. During development, Google AI Plus 
 
 The extension keeps the last result visible in the popup so these repeated failures are easier to notice.
 
+## License
+
+This source code is released under CC0 1.0 Universal. See [LICENSE](./LICENSE).
+
 ## Release Notes
 
 ### 1.0.0

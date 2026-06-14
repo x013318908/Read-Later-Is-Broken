@@ -2,6 +2,7 @@
   "name": "read-later-is-broken",
   "version": "1.0.0",
   "private": true,
+  "license": "CC0-1.0",
   "description": "Chrome extension for saving current pages to NotebookLM notebooks.",
   "type": "module",
   "scripts": {
