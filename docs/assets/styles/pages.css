@@ -8,6 +8,10 @@
   --line: #d9d7ce;
   --accent: #256b5d;
   --accent-strong: #17493f;
+  --primary-button-text: #ffffff;
+  --panel-dot: #a6a196;
+  --workflow-bg: #fbfbf9;
+  --screenshot-bg: #151515;
   --shadow: 0 18px 50px rgba(24, 31, 36, 0.12);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -134,7 +138,7 @@ a {
 .button.primary {
   border-color: var(--accent);
   background: var(--accent);
-  color: #ffffff;
+  color: var(--primary-button-text);
 }
 
 .button.primary:hover {
@@ -169,7 +173,7 @@ a {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #a6a196;
+  background: var(--panel-dot);
 }
 
 .panel-body {
@@ -184,7 +188,7 @@ a {
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfbf9;
+  background: var(--workflow-bg);
 }
 
 .workflow-row strong {
@@ -270,7 +274,7 @@ figure {
   width: 100%;
   aspect-ratio: 16 / 10;
   border-bottom: 1px solid var(--line);
-  background: #151515;
+  background: var(--screenshot-bg);
   object-fit: contain;
 }
 
@@ -399,6 +403,25 @@ code {
   padding: 2px 5px;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 0.92em;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #111411;
+    --surface: #1d201c;
+    --surface-soft: #252821;
+    --text: #f4eee5;
+    --muted: #c4b9aa;
+    --line: rgba(239, 225, 205, 0.16);
+    --accent: #84d9bd;
+    --accent-strong: #ace8d2;
+    --primary-button-text: #102018;
+    --panel-dot: #7f7a6f;
+    --workflow-bg: #171a17;
+    --screenshot-bg: #0d0f0d;
+    --shadow: 0 18px 50px rgba(0, 0, 0, 0.36);
+  }
 }
 
 @media (max-width: 980px) {

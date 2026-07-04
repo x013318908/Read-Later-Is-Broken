@@ -1,6 +1,40 @@
 :root {
-  color: #171717;
-  background: #f6f3ee;
+  color-scheme: light;
+  --app-text: #171717;
+  --app-root-bg: #f6f3ee;
+  --page-bg:
+    radial-gradient(circle at 12% 0%, rgba(43, 91, 80, 0.12), transparent 30%),
+    linear-gradient(180deg, #fbf9f5 0%, #f1ece4 100%);
+  --legend-text: #2a2824;
+  --surface-border: rgba(39, 35, 30, 0.14);
+  --surface-border-strong: rgba(39, 35, 30, 0.16);
+  --surface-divider: rgba(39, 35, 30, 0.12);
+  --surface-bg: rgba(255, 255, 255, 0.58);
+  --surface-bg-strong: rgba(255, 255, 255, 0.74);
+  --surface-control-bg: rgba(255, 255, 255, 0.72);
+  --input-bg: rgba(255, 255, 255, 0.86);
+  --input-text: #1f1d19;
+  --button-bg: #22201c;
+  --button-text: #fffaf0;
+  --secondary-text: #26231f;
+  --accent: #2c5b50;
+  --accent-soft: rgba(44, 91, 80, 0.13);
+  --accent-focus: rgba(44, 91, 80, 0.14);
+  --digest-border: rgba(44, 91, 80, 0.2);
+  --digest-divider: rgba(44, 91, 80, 0.16);
+  --digest-bg: rgba(255, 255, 255, 0.53);
+  --digest-row-bg: rgba(255, 255, 255, 0.62);
+  --special-row-border: rgba(44, 91, 80, 0.18);
+  --special-row-bg: rgba(236, 246, 241, 0.74);
+  --summary-text: #4f5b54;
+  --primary-text: #25221e;
+  --muted-text: #6d655b;
+  --subtle-text: #756d62;
+  --special-muted-text: #5e655f;
+  --success-text: #256347;
+  --danger-text: #8a2b22;
+  color: var(--app-text);
+  background: var(--app-root-bg);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     "Noto Sans JP", sans-serif;
@@ -15,9 +49,8 @@
 body {
   min-width: 360px;
   margin: 0;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(43, 91, 80, 0.12), transparent 30%),
-    linear-gradient(180deg, #fbf9f5 0%, #f1ece4 100%);
+  background: var(--page-bg);
+  color: var(--app-text);
 }
 
 button,
@@ -47,7 +80,7 @@ p {
 }
 
 legend {
-  color: #2a2824;
+  color: var(--legend-text);
   font-size: 14px;
   font-weight: 800;
 }
@@ -99,25 +132,25 @@ fieldset {
 }
 
 .target-group {
-  border: 1px solid rgba(39, 35, 30, 0.14);
+  border: 1px solid var(--surface-border);
   border-radius: 8px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.58);
+  background: var(--surface-bg);
 }
 
 .digest-group {
-  border-color: rgba(44, 91, 80, 0.2);
-  background: #fff8;
+  border-color: var(--digest-border);
+  background: var(--digest-bg);
 }
 
 .digest-destination-settings {
-  border-top: 1px solid rgba(44, 91, 80, 0.16);
+  border-top: 1px solid var(--digest-divider);
   padding-top: 8px;
 }
 
 .digest-destination-settings summary {
   width: fit-content;
-  color: #4f5b54;
+  color: var(--summary-text);
   cursor: pointer;
   font-size: 12px;
   font-weight: 800;
@@ -130,7 +163,7 @@ fieldset {
 }
 
 .digest-destination-summary::marker {
-  color: #4f5b54;
+  color: var(--summary-text);
 }
 
 .digest-summary-counts {
@@ -146,7 +179,7 @@ fieldset {
 }
 
 .theme-group {
-  background: #fff8;
+  background: var(--digest-bg);
 }
 
 legend {
@@ -157,12 +190,14 @@ legend {
 .destination-checklist {
   display: grid;
   gap: 8px;
-  max-height: 150px;
-  overflow: auto;
-  border: 1px solid rgba(39, 35, 30, 0.16);
+  height: 150px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  border: 1px solid var(--surface-border-strong);
   border-radius: 8px;
   padding: 8px;
-  background: rgba(255, 255, 255, 0.74);
+  background: var(--surface-bg-strong);
 }
 
 .destination-check-row {
@@ -177,12 +212,12 @@ legend {
   width: 16px;
   min-height: 16px;
   margin-top: 4px;
-  accent-color: #2c5b50;
+  accent-color: var(--accent);
 }
 
 .destination-check-row strong,
 .destination-label {
-  color: #25221e;
+  color: var(--primary-text);
   font-size: 12px;
   font-weight: 800;
   line-height: 1.35;
@@ -211,8 +246,8 @@ legend {
   min-height: 18px;
   border-radius: 999px;
   padding: 0 6px;
-  background: rgba(44, 91, 80, 0.13);
-  color: #2c5b50;
+  background: var(--accent-soft);
+  color: var(--accent);
   font-size: 10px;
   font-weight: 900;
   line-height: 1;
@@ -228,20 +263,20 @@ legend {
 
 .destination-check-row small {
   overflow-wrap: anywhere;
-  color: #6d655b;
+  color: var(--muted-text);
   font-size: 10px;
   line-height: 1.35;
 }
 
 .destination-check-empty {
-  color: #6d655b;
+  color: var(--muted-text);
   font-size: 12px;
   line-height: 1.45;
 }
 
 .destination-count {
   margin-top: -2px;
-  color: #756d62;
+  color: var(--subtle-text);
   font-size: 11px;
   line-height: 1.35;
   text-align: right;
@@ -253,54 +288,54 @@ legend {
 }
 
 .special-destination-row {
-  border: 1px solid rgba(44, 91, 80, 0.18);
+  border: 1px solid var(--special-row-border);
   border-radius: 8px;
   padding: 9px 10px;
-  background: rgba(236, 246, 241, 0.74);
+  background: var(--special-row-bg);
 }
 
 .digest-destination-row {
-  background: rgba(255, 255, 255, 0.62);
+  background: var(--digest-row-bg);
 }
 
 .special-destination-row small {
-  color: #5e655f;
+  color: var(--special-muted-text);
 }
 
 input,
 select {
   width: 100%;
   min-height: 40px;
-  border: 1px solid rgba(39, 35, 30, 0.16);
+  border: 1px solid var(--surface-border-strong);
   border-radius: 8px;
   padding: 9px 10px;
-  background: rgba(255, 255, 255, 0.86);
-  color: #1f1d19;
+  background: var(--input-bg);
+  color: var(--input-text);
   outline: none;
 }
 
 input:focus,
 select:focus {
-  border-color: #2c5b50;
-  box-shadow: 0 0 0 3px rgba(44, 91, 80, 0.14);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-focus);
 }
 
 #send-button,
 #theme-send-button {
   min-height: 42px;
   border-radius: 8px;
-  background: #22201c;
-  color: #fffaf0;
+  background: var(--button-bg);
+  color: var(--button-text);
   font-size: 13px;
   font-weight: 800;
 }
 
 .secondary-button {
   min-height: 38px;
-  border: 1px solid rgba(39, 35, 30, 0.13);
+  border: 1px solid var(--surface-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
-  color: #26231f;
+  background: var(--surface-control-bg);
+  color: var(--secondary-text);
   font-size: 13px;
   font-weight: 800;
 }
@@ -313,17 +348,17 @@ select:focus {
 .message {
   min-height: 18px;
   margin: 12px 0 0;
-  color: #625b51;
+  color: var(--muted-text);
   font-size: 12px;
   line-height: 1.45;
 }
 
 .message[data-variant="success"] {
-  color: #256347;
+  color: var(--success-text);
 }
 
 .message[data-variant="danger"] {
-  color: #8a2b22;
+  color: var(--danger-text);
 }
 
 .last-result:empty {
@@ -331,15 +366,54 @@ select:focus {
 }
 
 .last-result {
-  border-top: 1px solid rgba(39, 35, 30, 0.12);
+  border-top: 1px solid var(--surface-divider);
   padding-top: 10px;
 }
 
 footer {
   margin-top: 16px;
-  color: #756d62;
+  color: var(--subtle-text);
   font-size: 11px;
   line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --app-text: #f4eee5;
+    --app-root-bg: #111411;
+    --page-bg:
+      radial-gradient(circle at 12% 0%, rgba(98, 189, 163, 0.16), transparent 32%),
+      linear-gradient(180deg, #1b1d19 0%, #111411 100%);
+    --legend-text: #f2e7d8;
+    --surface-border: rgba(239, 225, 205, 0.15);
+    --surface-border-strong: rgba(239, 225, 205, 0.18);
+    --surface-divider: rgba(239, 225, 205, 0.14);
+    --surface-bg: rgba(28, 31, 27, 0.78);
+    --surface-bg-strong: rgba(25, 28, 25, 0.9);
+    --surface-control-bg: rgba(45, 48, 42, 0.88);
+    --input-bg: rgba(22, 25, 22, 0.92);
+    --input-text: #f7efe5;
+    --button-bg: #e8dccb;
+    --button-text: #151713;
+    --secondary-text: #eee5d8;
+    --accent: #84d9bd;
+    --accent-soft: rgba(132, 217, 189, 0.17);
+    --accent-focus: rgba(132, 217, 189, 0.24);
+    --digest-border: rgba(132, 217, 189, 0.28);
+    --digest-divider: rgba(132, 217, 189, 0.2);
+    --digest-bg: rgba(24, 28, 24, 0.82);
+    --digest-row-bg: rgba(31, 34, 30, 0.78);
+    --special-row-border: rgba(132, 217, 189, 0.24);
+    --special-row-bg: rgba(31, 52, 45, 0.72);
+    --summary-text: #bfd0c3;
+    --primary-text: #f7efe4;
+    --muted-text: #c7baaa;
+    --subtle-text: #b5aa9b;
+    --special-muted-text: #c6d5ca;
+    --success-text: #7ddfb3;
+    --danger-text: #ff9c91;
+  }
 }
 
 @media (max-width: 680px) {

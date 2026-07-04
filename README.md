@@ -6,7 +6,7 @@ Read later is broken. Listen first. Ask later.
 
 This project is not affiliated with Google or NotebookLM.
 
-Current version: `1.0.0`
+Current version: `1.1.0`
 
 ## Install
 
@@ -23,6 +23,7 @@ Current version: `1.0.0`
 - Runs add jobs in the background, so the popup can be closed while NotebookLM processes the request.
 - Stores the last add result in the popup so persistent NotebookLM-side errors remain visible.
 - Uses Chrome UI language for the extension UI, with English and Japanese locale files.
+- Follows the browser light or dark color scheme.
 
 The extension adds pages as NotebookLM sources. It does not automatically generate Deep Dives or audio overviews.
 
@@ -98,7 +99,7 @@ Useful local files:
 - `docs/permissions.html`: Chrome Web Store permission explanations
 - `docs/assets/screenshots/`: screenshots for Pages and store materials
 - `docs/assets/promotion_image/`: promotional images
-- `docs/release-notes-v1.0.0.md`: Chrome Web Store release note copy
+- `docs/release-notes-v1.1.0.md`: Chrome Web Store release note copy
 - `docs/roadmap.md`: project notes and deferred ideas
 
 ## Project Files
@@ -122,6 +123,11 @@ The extension keeps the last result visible in the popup so these repeated failu
 This source code is released under CC0 1.0 Universal. See [LICENSE](./LICENSE).
 
 ## Release Notes
+
+### 1.1.0
+
+- Added light and dark color scheme support for the popup and public documentation pages.
+- Kept the notebook list area stable while searching so the popup layout does not shift as result counts change.
 
 ### 1.0.0
 
