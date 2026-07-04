@@ -3,7 +3,7 @@
     "message": "Read Later Is Broken"
   },
   "extensionDescription": {
-    "message": "現在ページを選択したNotebookLMノートブックへ送ります。"
+    "message": "閲覧中ページをNotebookLMに追加します。"
   },
   "digest": {
     "message": "ダイジェスト"
@@ -80,7 +80,7 @@
     "message": "ノートブック一覧の取得結果を読めませんでした。"
   },
   "currentPageUnavailable": {
-    "message": "現在のページを取得できませんでした。$ERROR$",
+    "message": "ページを取得できませんでした。$ERROR$",
     "placeholders": {
       "error": {
         "content": "$1"
@@ -88,7 +88,7 @@
     }
   },
   "currentPageNotReady": {
-    "message": "現在ページが取得できていません。"
+    "message": "ページが取得できていません。"
   },
   "selectDigestDestination": {
     "message": "ダイジェストの追加先を1つ以上選択してください。"
