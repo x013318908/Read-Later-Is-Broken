@@ -6,7 +6,7 @@ Read later is broken. Listen first. Ask later.
 
 This project is not affiliated with Google or Gemini Notebook.
 
-Current version: `1.1.0`
+Current version: `1.1.1`
 
 ## Install
 
@@ -100,7 +100,7 @@ Useful local files:
 - `docs/permissions.html`: Chrome Web Store permission explanations
 - `docs/assets/screenshots/`: screenshots for Pages and store materials
 - `docs/assets/promotion_image/`: promotional images
-- `docs/release-notes-v1.1.0.md`: Chrome Web Store release note copy
+- `docs/release-notes-v1.1.1.md`: Chrome Web Store release note copy
 - `docs/roadmap.md`: project notes and deferred ideas
 
 ## Project Files
@@ -124,6 +124,12 @@ The extension keeps the last result visible in the popup so these repeated failu
 This source code is released under CC0 1.0 Universal. See [LICENSE](./LICENSE).
 
 ## Release Notes
+
+### 1.1.1
+
+- Restored notebook list, creation, and source-add operations after NotebookLM became Gemini Notebook and moved to `notebook.google.com`.
+- Kept previously saved `notebooklm.google.com` destinations compatible by normalizing them to the new domain.
+- Updated extension and documentation wording to Gemini Notebook.
 
 ### 1.1.0
 
