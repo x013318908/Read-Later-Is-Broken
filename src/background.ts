@@ -21,6 +21,12 @@ import type {
   NotebookListResult
 } from "./shared/types";
 import { t } from "./shared/i18n";
+import {
+  buildNotebookUrl,
+  GEMINI_NOTEBOOK_ORIGIN,
+  GEMINI_NOTEBOOK_RPC_PATH,
+  getNotebookTarget
+} from "./shared/geminiNotebook";
 import { rememberLastAddStatus, upsertDestination } from "./shared/storage";
 
 const MAX_PARALLEL_NOTEBOOK_ADDS = 3;
@@ -303,7 +309,7 @@ interface NotebookLmRpcResponse {
 }
 
 async function loadNotebookLmAuthParams(authuser?: string): Promise<NotebookLmAuthParams> {
-  const url = new URL("https://notebooklm.google.com/");
+  const url = new URL("/", GEMINI_NOTEBOOK_ORIGIN);
 
   if (authuser) {
     url.searchParams.set("authuser", authuser);
@@ -331,7 +337,7 @@ async function executeNotebookLmRpcs(
   authParams: NotebookLmAuthParams,
   rpcs: NotebookLmRpcRequest[]
 ): Promise<NotebookLmRpcResponse[]> {
-  const url = new URL("https://notebooklm.google.com/_/LabsTailwindUi/data/batchexecute");
+  const url = new URL(GEMINI_NOTEBOOK_RPC_PATH, GEMINI_NOTEBOOK_ORIGIN);
   url.searchParams.set("rpcids", rpcs.map((rpc) => rpc.id).join(","));
   url.searchParams.set("_reqid", Math.floor(Math.random() * 900000 + 100000).toString());
   url.searchParams.set("bl", authParams.bl);
@@ -605,16 +611,6 @@ function buildNotebookCreateArgs(title: string, emoji?: string): unknown[] {
   return emoji === undefined ? [title] : [title, emoji];
 }
 
-function buildNotebookUrl(notebookId: string, authuser?: string): string {
-  const url = new URL(`https://notebooklm.google.com/notebook/${notebookId}`);
-
-  if (authuser) {
-    url.searchParams.set("authuser", authuser);
-  }
-
-  return url.toString();
-}
-
 function extractNotebookLmToken(html: string, name: string): string | undefined {
   return new RegExp(`"${name}":"([^"]+)"`).exec(html)?.[1];
 }
@@ -644,7 +640,7 @@ async function addSourceToNotebookTargetSilently(target: NotebookDirectAddTarget
     );
   } catch (error) {
     console.warn(
-      `Read Later Is Broken: NotebookLM add request did not return a stable result for ${target.name}.`,
+      `Read Later Is Broken: Gemini Notebook add request did not return a stable result for ${target.name}.`,
       getErrorMessage(error)
     );
   }
@@ -660,7 +656,7 @@ async function addSourceToNotebookTarget(
     throw new Error(t("invalidNotebookUrl"));
   }
 
-  const tab = await chrome.tabs.create({ url: request.notebookUrl, active: options.active });
+  const tab = await chrome.tabs.create({ url: notebookTarget.notebookUrl, active: options.active });
 
   if (!tab.id) {
     throw new Error(t("notebookTabOpenFailed"));
@@ -675,7 +671,7 @@ async function addSourceToNotebookTarget(
       func: addSourceToNotebookPage,
       args: [
         {
-          notebookUrl: request.notebookUrl,
+          notebookUrl: notebookTarget.notebookUrl,
           notebookId: notebookTarget.notebookId,
           authuser: notebookTarget.authuser,
           source: request.source,
@@ -1095,29 +1091,6 @@ function waitForTabComplete(tabId: number): Promise<void> {
       }
     });
   });
-}
-
-function getNotebookTarget(notebookUrl: string): { notebookId: string; authuser?: string } | undefined {
-  try {
-    const url = new URL(notebookUrl);
-
-    if (url.protocol !== "https:" || url.hostname !== "notebooklm.google.com") {
-      return undefined;
-    }
-
-    const notebookId = /^\/notebook\/([^/?#]+)/.exec(url.pathname)?.[1];
-
-    if (!notebookId) {
-      return undefined;
-    }
-
-    return {
-      notebookId,
-      authuser: url.searchParams.get("authuser") ?? undefined
-    };
-  } catch {
-    return undefined;
-  }
 }
 
 function isNotebookAddJobMessage(value: unknown): value is {

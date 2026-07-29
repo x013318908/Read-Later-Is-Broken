@@ -3,7 +3,7 @@
     "message": "Read Later Is Broken"
   },
   "extensionDescription": {
-    "message": "Send the current page to selected NotebookLM notebooks."
+    "message": "Send the current page to selected Gemini Notebook notebooks."
   },
   "digest": {
     "message": "Digest"
@@ -12,10 +12,10 @@
     "message": "Theme"
   },
   "addToNotebookLm": {
-    "message": "Add to NotebookLM"
+    "message": "Add to Gemini Notebook"
   },
   "addToNotebookLmWithCount": {
-    "message": "Add to NotebookLM ($COUNT$)",
+    "message": "Add to Gemini Notebook ($COUNT$)",
     "placeholders": {
       "count": {
         "content": "$1"
@@ -38,10 +38,10 @@
     "message": "Create"
   },
   "digestNotebookListLabel": {
-    "message": "Digest NotebookLM notebooks"
+    "message": "Digest Gemini Notebook notebooks"
   },
   "registeredNotebookListLabel": {
-    "message": "Registered NotebookLM notebooks"
+    "message": "Registered Gemini Notebook notebooks"
   },
   "notebookCount": {
     "message": "$COUNT$ notebooks",
@@ -60,16 +60,16 @@
     }
   },
   "footerDisclaimer": {
-    "message": "Independent helper. Not affiliated with Google or NotebookLM."
+    "message": "Independent helper. Not affiliated with Google or Gemini Notebook."
   },
   "loadingNotebookList": {
-    "message": "Loading NotebookLM notebooks."
+    "message": "Loading Gemini Notebook notebooks."
   },
   "refreshingNotebookList": {
-    "message": "Refreshing NotebookLM notebooks."
+    "message": "Refreshing Gemini Notebook notebooks."
   },
   "loadedNotebookList": {
-    "message": "Loaded $COUNT$ notebooks from NotebookLM.",
+    "message": "Loaded $COUNT$ notebooks from Gemini Notebook.",
     "placeholders": {
       "count": {
         "content": "$1"
@@ -103,7 +103,7 @@
     "message": "Started adding to theme notebooks. This will continue if you close the popup."
   },
   "creatingNotebook": {
-    "message": "Creating a NotebookLM notebook."
+    "message": "Creating a Gemini Notebook notebook."
   },
   "createNotebookResultUnreadable": {
     "message": "Could not read the new notebook creation result."
@@ -123,7 +123,7 @@
     }
   },
   "notebookAddResultUnreadable": {
-    "message": "Could not get the NotebookLM add result."
+    "message": "Could not get the Gemini Notebook add result."
   },
   "unsupportedCurrentPage": {
     "message": "This page cannot be read by the Chrome extension."
@@ -149,7 +149,7 @@
     "message": "An unexpected error occurred."
   },
   "runningNotebookAdd": {
-    "message": "Adding to NotebookLM."
+    "message": "Adding to Gemini Notebook."
   },
   "registeredTargets": {
     "message": "$COUNT$ registered",
@@ -163,7 +163,7 @@
     "message": "No destinations were selected."
   },
   "notebookAddSuccess": {
-    "message": "Added to NotebookLM ($NAMES$).",
+    "message": "Added to Gemini Notebook ($NAMES$).",
     "placeholders": {
       "names": {
         "content": "$1"
@@ -171,7 +171,7 @@
     }
   },
   "notebookAddFailure": {
-    "message": "Failed to add to NotebookLM ($FAILURES$).",
+    "message": "Failed to add to Gemini Notebook ($FAILURES$).",
     "placeholders": {
       "failures": {
         "content": "$1"
@@ -179,7 +179,7 @@
     }
   },
   "notebookAddPartial": {
-    "message": "Partially added to NotebookLM ($NAMES$). Failed: $FAILURES$",
+    "message": "Partially added to Gemini Notebook ($NAMES$). Failed: $FAILURES$",
     "placeholders": {
       "names": {
         "content": "$1"
@@ -190,7 +190,7 @@
     }
   },
   "directBatchAddComplete": {
-    "message": "Sent add requests to NotebookLM ($COUNT$ notebooks). Check the source list in NotebookLM if needed.",
+    "message": "Sent add requests to Gemini Notebook ($COUNT$ notebooks). Check the source list in Gemini Notebook if needed.",
     "placeholders": {
       "count": {
         "content": "$1"
@@ -198,7 +198,7 @@
     }
   },
   "loadedNotebookListBackground": {
-    "message": "Loaded $COUNT$ notebooks from NotebookLM.",
+    "message": "Loaded $COUNT$ notebooks from Gemini Notebook.",
     "placeholders": {
       "count": {
         "content": "$1"
@@ -206,7 +206,7 @@
     }
   },
   "createdNotebookBackground": {
-    "message": "Created a new NotebookLM notebook."
+    "message": "Created a new Gemini Notebook notebook."
   },
   "dateNotebookAddComplete": {
     "message": "$PERIOD$ notebook \"$TITLE$\" was $ACTION$, and the URL add request was sent.",
@@ -229,10 +229,10 @@
     "message": "reused"
   },
   "notebookLoginCheck": {
-    "message": "Check that you are signed in to NotebookLM."
+    "message": "Check that you are signed in to Gemini Notebook."
   },
   "notebookRpcHttpFailure": {
-    "message": "NotebookLM RPC failed: HTTP $STATUS$",
+    "message": "Gemini Notebook RPC failed: HTTP $STATUS$",
     "placeholders": {
       "status": {
         "content": "$1"
@@ -240,37 +240,37 @@
     }
   },
   "notebookRpcEmpty": {
-    "message": "The NotebookLM RPC response was empty."
+    "message": "The Gemini Notebook RPC response was empty."
   },
   "notebookRpcUnexpected": {
-    "message": "The NotebookLM RPC response format was unexpected."
+    "message": "The Gemini Notebook RPC response format was unexpected."
   },
   "notebookListLoadFailed": {
-    "message": "Could not load NotebookLM notebooks."
+    "message": "Could not load Gemini Notebook notebooks."
   },
   "untitledNotebook": {
     "message": "Untitled"
   },
   "notebookCreateFailed": {
-    "message": "Could not create the new NotebookLM notebook. You may have reached the notebook limit."
+    "message": "Could not create the new Gemini Notebook notebook. You may have reached the notebook limit."
   },
   "sourceAddFailed": {
-    "message": "Could not add the URL to the NotebookLM notebook. The notebook source limit, a protected page, or an unsupported URL may be the cause."
+    "message": "Could not add the URL to the Gemini Notebook notebook. The notebook source limit, a protected page, or an unsupported URL may be the cause."
   },
   "invalidNotebookUrl": {
-    "message": "Select a NotebookLM notebook URL."
+    "message": "Select a Gemini Notebook notebook URL."
   },
   "notebookTabOpenFailed": {
-    "message": "Could not open the NotebookLM tab."
+    "message": "Could not open the Gemini Notebook tab."
   },
   "notebookTabResultUnreadable": {
-    "message": "Could not get the URL add result from the NotebookLM tab."
+    "message": "Could not get the URL add result from the Gemini Notebook tab."
   },
   "tokenMissingTitle": {
-    "message": "Could not verify NotebookLM sign-in state."
+    "message": "Could not verify Gemini Notebook sign-in state."
   },
   "tokenMissingAction": {
-    "message": "Check that you are signed in to NotebookLM and that the page finished loading."
+    "message": "Check that you are signed in to Gemini Notebook and that the page finished loading."
   },
   "directAddFailureMessage": {
     "message": "URL add failed: $TITLE$ $ACTION$",
@@ -284,52 +284,52 @@
     }
   },
   "directAddSuccessMessage": {
-    "message": "URL add succeeded: Sent the source add RPC to NotebookLM."
+    "message": "URL add succeeded: Sent the source add RPC to Gemini Notebook."
   },
   "requestFailedFallback": {
     "message": "request failed"
   },
   "communicationFailureTitle": {
-    "message": "Communication with NotebookLM failed."
+    "message": "Communication with Gemini Notebook failed."
   },
   "communicationFailureAction": {
     "message": "Check your network connection and try again."
   },
   "loginPermissionFailureTitle": {
-    "message": "You are not signed in to NotebookLM, or you cannot access this notebook."
+    "message": "You are not signed in to Gemini Notebook, or you cannot access this notebook."
   },
   "loginPermissionFailureAction": {
-    "message": "Check your NotebookLM sign-in state and the Google account for the registered notebook URL."
+    "message": "Check your Gemini Notebook sign-in state and the Google account for the registered notebook URL."
   },
   "rateLimitedFailureTitle": {
-    "message": "NotebookLM may have limited repeated additions."
+    "message": "Gemini Notebook may have limited repeated additions."
   },
   "rateLimitedFailureAction": {
     "message": "Wait a while and try again."
   },
   "serverFailureTitle": {
-    "message": "NotebookLM may have a temporary error."
+    "message": "Gemini Notebook may have a temporary error."
   },
   "serverFailureAction": {
-    "message": "Reload NotebookLM or wait a while and try again."
+    "message": "Reload Gemini Notebook or wait a while and try again."
   },
   "sourceRejectedFailureTitle": {
-    "message": "NotebookLM responded, but the source add result was empty."
+    "message": "Gemini Notebook responded, but the source add result was empty."
   },
   "sourceRejectedFailureAction": {
     "message": "The notebook source limit, a protected page, or an unsupported URL may be the cause."
   },
   "responseChangedFailureTitle": {
-    "message": "NotebookLM's internal response format was unexpected."
+    "message": "Gemini Notebook's internal response format was unexpected."
   },
   "responseChangedFailureAction": {
-    "message": "NotebookLM may have changed its behavior. The extension needs an update."
+    "message": "Gemini Notebook may have changed its behavior. The extension needs an update."
   },
   "unknownFailureTitle": {
-    "message": "The NotebookLM source add RPC did not succeed."
+    "message": "The Gemini Notebook source add RPC did not succeed."
   },
   "unknownFailureAction": {
-    "message": "Check the source list in NotebookLM and try again if needed."
+    "message": "Check the source list in Gemini Notebook and try again if needed."
   },
   "directAddStatusOkTitle": {
     "message": "Read Later Is Broken: URL add succeeded"
@@ -347,6 +347,6 @@
     "message": "missing"
   },
   "notebookLoadTimeout": {
-    "message": "NotebookLM loading timed out."
+    "message": "Gemini Notebook loading timed out."
   }
 }

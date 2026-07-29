@@ -23,5 +23,8 @@
     "128": "icons/icon-128.png"
   },
   "permissions": ["activeTab", "scripting", "storage"],
-  "host_permissions": ["https://notebooklm.google.com/*"]
+  "host_permissions": [
+    "https://notebook.google.com/*",
+    "https://notebooklm.google.com/*"
+  ]
 }

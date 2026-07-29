@@ -38,7 +38,7 @@
         <h2>Single purpose</h2>
         <p>
           Read Later Is Broken lets users add the current browser page URL to selected
-          NotebookLM notebooks from a Chrome extension popup.
+          Gemini Notebook notebooks from a Chrome extension popup.
         </p>
       </section>
 
@@ -49,15 +49,15 @@
             <h3><code>activeTab</code></h3>
             <p>
               Used only after the user opens the extension popup to read the active tab's
-              URL and title. This lets the extension add the current page to NotebookLM
+              URL and title. This lets the extension add the current page to Gemini Notebook
               without requesting persistent access to all websites.
             </p>
           </article>
           <article>
             <h3><code>scripting</code></h3>
             <p>
-              Used to run bundled extension helper code in temporary NotebookLM tabs. The
-              helper code performs user-requested NotebookLM actions such as adding the
+              Used to run bundled extension helper code in temporary Gemini Notebook tabs. The
+              helper code performs user-requested Gemini Notebook actions such as adding the
               current page as a source.
             </p>
           </article>
@@ -65,16 +65,23 @@
             <h3><code>storage</code></h3>
             <p>
               Used to store extension settings in Chrome extension storage, including saved
-              NotebookLM destinations, source counts, selected destination IDs, digest
+              Gemini Notebook destinations, source counts, selected destination IDs, digest
               checkbox settings, and the last add result.
+            </p>
+          </article>
+          <article>
+            <h3><code>https://notebook.google.com/*</code></h3>
+            <p>
+              Required to interact with Gemini Notebook for the extension's single purpose:
+              listing notebooks, showing source counts, creating notebooks, and adding the
+              current page URL as a source to selected notebooks.
             </p>
           </article>
           <article>
             <h3><code>https://notebooklm.google.com/*</code></h3>
             <p>
-              Required to interact with NotebookLM for the extension's single purpose:
-              listing notebooks, showing source counts, creating notebooks, and adding the
-              current page URL as a source to selected notebooks.
+              Retained temporarily so notebook destinations saved before the Gemini Notebook
+              domain change remain compatible while they are normalized to the new URL.
             </p>
           </article>
         </div>
@@ -86,22 +93,22 @@
           <h3>Single purpose description</h3>
           <p>
             Read Later Is Broken helps users add the current browser page URL to selected
-            NotebookLM notebooks from a Chrome extension popup.
+            Gemini Notebook notebooks from a Chrome extension popup.
           </p>
         </div>
         <div class="copy-block">
           <h3>Remote code</h3>
           <p>
             No remote code is used. The extension executes only bundled extension code.
-            Network requests are made to NotebookLM only to perform user-requested actions.
+            Network requests are made to Gemini Notebook only to perform user-requested actions.
           </p>
         </div>
         <div class="copy-block">
           <h3>Data use summary</h3>
           <p>
-            The extension handles the current tab URL/title, NotebookLM notebook names/URLs,
+            The extension handles the current tab URL/title, Gemini Notebook notebook names/URLs,
             source counts, saved destination selections, digest preferences, and the last add
-            result. This data is used only to add the current page to user-selected NotebookLM
+            result. This data is used only to add the current page to user-selected Gemini Notebook
             notebooks, show destination status, and remember extension settings. The extension
             does not use this data for ads, analytics, profiling, or sale to third parties.
           </p>
@@ -128,7 +135,7 @@
     <footer class="site-footer">
       <a href="./">Home</a>
       <a href="./privacy.html">Privacy Policy</a>
-      <span>This project is not affiliated with Google or NotebookLM.</span>
+      <span>This project is not affiliated with Google or Gemini Notebook.</span>
     </footer>
   </body>
 </html>

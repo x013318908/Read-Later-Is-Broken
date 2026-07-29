@@ -1,4 +1,5 @@
 import type { AddJobStatusItem, AppSettings, CurrentPage, Destination, LastAddStatus } from "./types";
+import { canonicalizeNotebookUrl } from "./geminiNotebook";
 
 const STORAGE_KEY = "settings";
 type DestinationInput = Pick<Destination, "name" | "notebookUrl"> & Partial<Pick<Destination, "sourceCount">>;
@@ -22,18 +23,25 @@ export function saveSettings(settings: AppSettings): Promise<void> {
 export async function upsertDestination(input: DestinationInput): Promise<AppSettings> {
   const settings = await loadSettings();
   const now = new Date().toISOString();
-  const existing = settings.destinations.find((destination) => destination.notebookUrl === input.notebookUrl);
+  const normalizedInput = {
+    ...input,
+    notebookUrl: canonicalizeNotebookUrl(input.notebookUrl)
+  };
+  const existing = settings.destinations.find(
+    (destination) => destination.notebookUrl === normalizedInput.notebookUrl
+  );
 
   const destinations = existing
     ? settings.destinations.map((destination) =>
         destination.id === existing.id
           ? {
               ...destination,
-              name: input.name,
-              ...(input.sourceCount === undefined ? {} : { sourceCount: input.sourceCount }),
+              name: normalizedInput.name,
+              ...(normalizedInput.sourceCount === undefined ? {} : { sourceCount: normalizedInput.sourceCount }),
               updatedAt:
-                destination.name === input.name &&
-                (input.sourceCount === undefined || destination.sourceCount === input.sourceCount)
+                destination.name === normalizedInput.name &&
+                (normalizedInput.sourceCount === undefined ||
+                  destination.sourceCount === normalizedInput.sourceCount)
                   ? destination.updatedAt
                   : now
             }
@@ -43,9 +51,9 @@ export async function upsertDestination(input: DestinationInput): Promise<AppSet
         ...settings.destinations,
         {
           id: crypto.randomUUID(),
-          name: input.name,
-          notebookUrl: input.notebookUrl,
-          ...(input.sourceCount === undefined ? {} : { sourceCount: input.sourceCount }),
+          name: normalizedInput.name,
+          notebookUrl: normalizedInput.notebookUrl,
+          ...(normalizedInput.sourceCount === undefined ? {} : { sourceCount: normalizedInput.sourceCount }),
           createdAt: now,
           updatedAt: now
         }
@@ -65,8 +73,12 @@ export async function replaceDestinations(inputs: DestinationInput[]): Promise<A
   const now = new Date().toISOString();
   const inputByUrl = new Map<string, DestinationInput>();
   const destinationUrls = new Set<string>();
+  const normalizedInputs = inputs.map((input) => ({
+    ...input,
+    notebookUrl: canonicalizeNotebookUrl(input.notebookUrl)
+  }));
 
-  for (const input of inputs) {
+  for (const input of normalizedInputs) {
     if (inputByUrl.has(input.notebookUrl)) {
       continue;
     }
@@ -87,7 +99,7 @@ export async function replaceDestinations(inputs: DestinationInput[]): Promise<A
     destinations.push(buildUpdatedDestination(existing, input, now));
   }
 
-  for (const input of inputs) {
+  for (const input of normalizedInputs) {
     if (destinationUrls.has(input.notebookUrl)) {
       continue;
     }
@@ -175,19 +187,34 @@ function normalizeSettings(value: unknown): AppSettings {
     return DEFAULT_SETTINGS;
   }
 
-  const destinations = Array.isArray(value.destinations)
-    ? value.destinations.filter(isDestination)
-    : [];
+  const rawDestinations = Array.isArray(value.destinations) ? value.destinations.filter(isDestination) : [];
+  const destinationsByUrl = new Map<string, Destination>();
+  const destinationIdAliases = new Map<string, string>();
+
+  for (const destination of rawDestinations) {
+    const normalizedDestination = {
+      ...destination,
+      notebookUrl: canonicalizeNotebookUrl(destination.notebookUrl)
+    };
+    const existing = destinationsByUrl.get(normalizedDestination.notebookUrl);
+
+    if (existing) {
+      destinationIdAliases.set(destination.id, existing.id);
+      continue;
+    }
+
+    destinationsByUrl.set(normalizedDestination.notebookUrl, normalizedDestination);
+  }
+
+  const destinations = [...destinationsByUrl.values()];
 
   const destinationIds = new Set(destinations.map((destination) => destination.id));
   const rawSelectedDestinationIds = value.selectedDestinationIds;
   const selectedDestinationIds = Array.isArray(rawSelectedDestinationIds)
-    ? rawSelectedDestinationIds.filter(
-        (id, index) =>
-          typeof id === "string" &&
-          destinationIds.has(id) &&
-          rawSelectedDestinationIds.indexOf(id) === index
-      )
+    ? rawSelectedDestinationIds
+        .filter((id): id is string => typeof id === "string")
+        .map((id) => destinationIdAliases.get(id) ?? id)
+        .filter((id, index, ids) => destinationIds.has(id) && ids.indexOf(id) === index)
     : [];
 
   return {

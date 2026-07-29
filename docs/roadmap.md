@@ -5,7 +5,7 @@ Read Later Is Broken の実装方針と、決めた取捨選択を残すメモ�
 ## Implemented
 
 - 現在のブラウザタブ 1 件を対象にする。
-- NotebookLM の既存ノートブックを一覧取得し、popup 内で検索・選択する。
+- Gemini Notebook の既存ノートブックを一覧取得し、popup 内で検索・選択する。
 - Chrome の UI 言語に合わせて、英語と日本語の表示に切り替える。
 - popup は「ダイジェスト」と「テーマ別」に分かれている。
 - ダイジェストでは Daily、Weekly、Monthly だけを対象にする。
@@ -15,13 +15,13 @@ Read Later Is Broken の実装方針と、決めた取捨選択を残すメモ�
 - Daily / Weekly / Monthly は固定ISO形式の名前で作成・再利用する。
 - 追加処理は background ジョブとして実行し、popup を閉じても処理を続ける。
 - 前回の追加結果を popup に残す。
-- 新規ノートブックはタイトルと絵文字を省略できる。省略時は NotebookLM 側の自動命名・自動絵文字に任せる。
+- 新規ノートブックはタイトルと絵文字を省略できる。省略時は Gemini Notebook 側の自動命名・自動絵文字に任せる。
 - 既存ノートブック一覧は、チェック済みを上に並べ、その中でノートブック名順にする。ソート結果は保存順として保持する。
 - ノートブック名の先頭絵文字はソート時だけ無視する。検索では絵文字も検索対象にする。
 - 既存ノートブックと Daily / Weekly / Monthly にソース数バッジを表示する。
 - `保存先` 見出しには、チェック中のダイジェストノートブックだけソース数バッジを表示する。
 - 検索欄兼新規名入力欄で Enter を押しても、追加や作成は実行しない。
-- NotebookLM通信や popup-background 通信が詰まった場合はタイムアウトし、popup操作を復帰させる。
+- Gemini Notebook通信や popup-background 通信が詰まった場合はタイムアウトし、popup操作を復帰させる。
 - GitHub Pages に、公開用トップページ、プライバシーポリシー、Chrome Web Store 審査用の権限説明を置く。
 - Chrome Web Store 公開URL、プロモーション画像、英語スクリーンショットを README と GitHub Pages に反映する。
 
@@ -48,14 +48,14 @@ Quarterly / Yearly は未実装。追加する場合は上記の名前と絵文�
 
 ## Deferred / Out Of Scope
 
-- 複数タブ一括追加は外す。現在の実装でも追加先が多いとNotebookLM側の処理待ちや上限で不安定になりやすく、`タブ数 x 追加先数` のRPCにすると扱いづらい。
+- 複数タブ一括追加は外す。現在の実装でも追加先が多いとGemini Notebook側の処理待ちや上限で不安定になりやすく、`タブ数 x 追加先数` のRPCにすると扱いづらい。
 - 自由な命名テンプレート編集は外す。日付ノートブックは固定ISO形式で運用する。地域差への対応は、日付順序を変えるのではなくローカル日付をISO形式に整形することで扱う。
 - Deep Diveや音声解説の自動生成はしない。
-- NotebookLM / Google 公式に見える表現は使わない。
+- Gemini Notebook / Google 公式に見える表現は使わない。
 
-## NotebookLM Limits To Keep In Mind
+## Gemini Notebook Limits To Keep In Mind
 
 - Google AI Plus では、ノートブック数は200件まで。
 - 1ノートブック内のURLソース数は100件まで。
-- 上限に達した場合は、NotebookLM側でノートブックやソースを削除しない限り失敗し続ける。
+- 上限に達した場合は、Gemini Notebook側でノートブックやソースを削除しない限り失敗し続ける。
 - そのため、前回の失敗結果はpopupに残してユーザーが確認できるようにする。

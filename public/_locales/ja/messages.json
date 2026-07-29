@@ -3,7 +3,7 @@
     "message": "Read Later Is Broken"
   },
   "extensionDescription": {
-    "message": "閲覧中ページをNotebookLMに追加します。"
+    "message": "閲覧中ページをGemini Notebookに追加します。"
   },
   "digest": {
     "message": "ダイジェスト"
@@ -12,10 +12,10 @@
     "message": "テーマ別"
   },
   "addToNotebookLm": {
-    "message": "NotebookLM に追加"
+    "message": "Gemini Notebook に追加"
   },
   "addToNotebookLmWithCount": {
-    "message": "NotebookLM に追加 ($COUNT$)",
+    "message": "Gemini Notebook に追加 ($COUNT$)",
     "placeholders": {
       "count": {
         "content": "$1"
@@ -38,10 +38,10 @@
     "message": "作成"
   },
   "digestNotebookListLabel": {
-    "message": "ダイジェスト用NotebookLMノートブック"
+    "message": "ダイジェスト用Gemini Notebookノートブック"
   },
   "registeredNotebookListLabel": {
-    "message": "登録済みNotebookLMノートブック"
+    "message": "登録済みGemini Notebookノートブック"
   },
   "notebookCount": {
     "message": "ノートブック $COUNT$件",
@@ -60,16 +60,16 @@
     }
   },
   "footerDisclaimer": {
-    "message": "Independent helper. Not affiliated with Google or NotebookLM."
+    "message": "Independent helper. Not affiliated with Google or Gemini Notebook."
   },
   "loadingNotebookList": {
-    "message": "NotebookLMのノートブック一覧を読み込んでいます。"
+    "message": "Gemini Notebookのノートブック一覧を読み込んでいます。"
   },
   "refreshingNotebookList": {
-    "message": "NotebookLMのノートブック一覧を更新しています。"
+    "message": "Gemini Notebookのノートブック一覧を更新しています。"
   },
   "loadedNotebookList": {
-    "message": "NotebookLMから$COUNT$件を読み込みました。",
+    "message": "Gemini Notebookから$COUNT$件を読み込みました。",
     "placeholders": {
       "count": {
         "content": "$1"
@@ -103,7 +103,7 @@
     "message": "テーマ別ノートブックへの追加を開始しました。popupを閉じても続行します。"
   },
   "creatingNotebook": {
-    "message": "NotebookLMにノートブックを作成しています。"
+    "message": "Gemini Notebookにノートブックを作成しています。"
   },
   "createNotebookResultUnreadable": {
     "message": "新規ノートブックの作成結果を読めませんでした。"
@@ -123,7 +123,7 @@
     }
   },
   "notebookAddResultUnreadable": {
-    "message": "NotebookLM追加結果を取得できませんでした。"
+    "message": "Gemini Notebook追加結果を取得できませんでした。"
   },
   "unsupportedCurrentPage": {
     "message": "このページは Chrome 拡張から取得できません。"
@@ -149,7 +149,7 @@
     "message": "予期しないエラーが発生しました。"
   },
   "runningNotebookAdd": {
-    "message": "NotebookLMへの追加を実行中です。"
+    "message": "Gemini Notebookへの追加を実行中です。"
   },
   "registeredTargets": {
     "message": "登録済み$COUNT$件",
@@ -163,7 +163,7 @@
     "message": "追加先がありませんでした。"
   },
   "notebookAddSuccess": {
-    "message": "NotebookLMへの追加を実行しました（$NAMES$）。",
+    "message": "Gemini Notebookへの追加を実行しました（$NAMES$）。",
     "placeholders": {
       "names": {
         "content": "$1"
@@ -171,7 +171,7 @@
     }
   },
   "notebookAddFailure": {
-    "message": "NotebookLMへの追加に失敗しました（$FAILURES$）。",
+    "message": "Gemini Notebookへの追加に失敗しました（$FAILURES$）。",
     "placeholders": {
       "failures": {
         "content": "$1"
@@ -179,7 +179,7 @@
     }
   },
   "notebookAddPartial": {
-    "message": "NotebookLMへの追加を一部実行しました（$NAMES$）。失敗: $FAILURES$",
+    "message": "Gemini Notebookへの追加を一部実行しました（$NAMES$）。失敗: $FAILURES$",
     "placeholders": {
       "names": {
         "content": "$1"
@@ -190,7 +190,7 @@
     }
   },
   "directBatchAddComplete": {
-    "message": "NotebookLMへの追加を実行しました（$COUNT$件）。NotebookLM側でソース一覧を確認してください。",
+    "message": "Gemini Notebookへの追加を実行しました（$COUNT$件）。Gemini Notebook側でソース一覧を確認してください。",
     "placeholders": {
       "count": {
         "content": "$1"
@@ -198,7 +198,7 @@
     }
   },
   "loadedNotebookListBackground": {
-    "message": "NotebookLMから$COUNT$件のノートブックを読み込みました。",
+    "message": "Gemini Notebookから$COUNT$件のノートブックを読み込みました。",
     "placeholders": {
       "count": {
         "content": "$1"
@@ -206,7 +206,7 @@
     }
   },
   "createdNotebookBackground": {
-    "message": "新しいNotebookLMノートブックを作成しました。"
+    "message": "新しいGemini Notebookノートブックを作成しました。"
   },
   "dateNotebookAddComplete": {
     "message": "$PERIOD$ノートブック「$TITLE$」を$ACTION$し、URL追加を実行しました。",
@@ -229,10 +229,10 @@
     "message": "再利用"
   },
   "notebookLoginCheck": {
-    "message": "NotebookLMにログインしているか確認してください。"
+    "message": "Gemini Notebookにログインしているか確認してください。"
   },
   "notebookRpcHttpFailure": {
-    "message": "NotebookLM RPCが失敗しました: HTTP $STATUS$",
+    "message": "Gemini Notebook RPCが失敗しました: HTTP $STATUS$",
     "placeholders": {
       "status": {
         "content": "$1"
@@ -240,37 +240,37 @@
     }
   },
   "notebookRpcEmpty": {
-    "message": "NotebookLM RPCの応答が空でした。"
+    "message": "Gemini Notebook RPCの応答が空でした。"
   },
   "notebookRpcUnexpected": {
-    "message": "NotebookLM RPCの応答形式が想定と違います。"
+    "message": "Gemini Notebook RPCの応答形式が想定と違います。"
   },
   "notebookListLoadFailed": {
-    "message": "NotebookLMのノートブック一覧を読み込めませんでした。"
+    "message": "Gemini Notebookのノートブック一覧を読み込めませんでした。"
   },
   "untitledNotebook": {
     "message": "Untitled"
   },
   "notebookCreateFailed": {
-    "message": "NotebookLMの新規ノートブックを作成できませんでした。ノートブック数の上限に達している可能性があります。"
+    "message": "Gemini Notebookの新規ノートブックを作成できませんでした。ノートブック数の上限に達している可能性があります。"
   },
   "sourceAddFailed": {
-    "message": "NotebookLMノートブックへURLを追加できませんでした。ノートブック内のソース数上限、保護されたページ、または非対応URLの可能性があります。"
+    "message": "Gemini NotebookノートブックへURLを追加できませんでした。ノートブック内のソース数上限、保護されたページ、または非対応URLの可能性があります。"
   },
   "invalidNotebookUrl": {
-    "message": "NotebookLM のノートブックURLを選択してください。"
+    "message": "Gemini Notebook のノートブックURLを選択してください。"
   },
   "notebookTabOpenFailed": {
-    "message": "NotebookLM タブを開けませんでした。"
+    "message": "Gemini Notebook タブを開けませんでした。"
   },
   "notebookTabResultUnreadable": {
-    "message": "NotebookLM タブからURL追加結果を取得できませんでした。"
+    "message": "Gemini Notebook タブからURL追加結果を取得できませんでした。"
   },
   "tokenMissingTitle": {
-    "message": "NotebookLMのログイン状態を確認できませんでした。"
+    "message": "Gemini Notebookのログイン状態を確認できませんでした。"
   },
   "tokenMissingAction": {
-    "message": "NotebookLMでログイン済みか、ページの読み込みが完了しているか確認してください。"
+    "message": "Gemini Notebookでログイン済みか、ページの読み込みが完了しているか確認してください。"
   },
   "directAddFailureMessage": {
     "message": "URL追加NG: $TITLE$ $ACTION$",
@@ -284,52 +284,52 @@
     }
   },
   "directAddSuccessMessage": {
-    "message": "URL追加OK: NotebookLMにソース追加RPCを送信しました。"
+    "message": "URL追加OK: Gemini Notebookにソース追加RPCを送信しました。"
   },
   "requestFailedFallback": {
     "message": "request failed"
   },
   "communicationFailureTitle": {
-    "message": "NotebookLMへの通信に失敗しました。"
+    "message": "Gemini Notebookへの通信に失敗しました。"
   },
   "communicationFailureAction": {
     "message": "ネットワーク状態を確認して、もう一度試してください。"
   },
   "loginPermissionFailureTitle": {
-    "message": "NotebookLMにログインしていないか、このノートブックにアクセスできません。"
+    "message": "Gemini Notebookにログインしていないか、このノートブックにアクセスできません。"
   },
   "loginPermissionFailureAction": {
-    "message": "NotebookLMタブでログイン状態と、登録したノートブックURLのGoogleアカウントを確認してください。"
+    "message": "Gemini Notebookタブでログイン状態と、登録したノートブックURLのGoogleアカウントを確認してください。"
   },
   "rateLimitedFailureTitle": {
-    "message": "NotebookLM側で連続追加が制限された可能性があります。"
+    "message": "Gemini Notebook側で連続追加が制限された可能性があります。"
   },
   "rateLimitedFailureAction": {
     "message": "少し時間を置いてから、もう一度試してください。"
   },
   "serverFailureTitle": {
-    "message": "NotebookLM側で一時的なエラーが起きた可能性があります。"
+    "message": "Gemini Notebook側で一時的なエラーが起きた可能性があります。"
   },
   "serverFailureAction": {
-    "message": "NotebookLMタブを再読み込みするか、時間を置いて再試行してください。"
+    "message": "Gemini Notebookタブを再読み込みするか、時間を置いて再試行してください。"
   },
   "sourceRejectedFailureTitle": {
-    "message": "NotebookLMは応答しましたが、ソース追加結果が空でした。"
+    "message": "Gemini Notebookは応答しましたが、ソース追加結果が空でした。"
   },
   "sourceRejectedFailureAction": {
     "message": "ノートブックのソース上限、保護されたページ、または非対応URLの可能性があります。"
   },
   "responseChangedFailureTitle": {
-    "message": "NotebookLMの内部応答形式が想定と違います。"
+    "message": "Gemini Notebookの内部応答形式が想定と違います。"
   },
   "responseChangedFailureAction": {
-    "message": "NotebookLM側の仕様変更の可能性があります。拡張機能側の更新が必要です。"
+    "message": "Gemini Notebook側の仕様変更の可能性があります。拡張機能側の更新が必要です。"
   },
   "unknownFailureTitle": {
-    "message": "NotebookLMへのソース追加RPCが成功しませんでした。"
+    "message": "Gemini Notebookへのソース追加RPCが成功しませんでした。"
   },
   "unknownFailureAction": {
-    "message": "NotebookLMタブでソース一覧を確認してから、必要なら再試行してください。"
+    "message": "Gemini Notebookタブでソース一覧を確認してから、必要なら再試行してください。"
   },
   "directAddStatusOkTitle": {
     "message": "Read Later Is Broken: URL追加OK"
@@ -347,6 +347,6 @@
     "message": "missing"
   },
   "notebookLoadTimeout": {
-    "message": "NotebookLM の読み込みがタイムアウトしました。"
+    "message": "Gemini Notebook の読み込みがタイムアウトしました。"
   }
 }

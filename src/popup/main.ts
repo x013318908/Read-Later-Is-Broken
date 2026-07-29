@@ -184,7 +184,7 @@ async function refreshNotebookList(options: {
     }
   } catch (error) {
     if (options.silent) {
-      console.warn("Read Later Is Broken: NotebookLM list sync failed.", getErrorMessage(error));
+      console.warn("Read Later Is Broken: Gemini Notebook list sync failed.", getErrorMessage(error));
     } else {
       showMessage(getErrorMessage(error), "danger");
     }

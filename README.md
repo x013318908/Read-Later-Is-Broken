@@ -1,10 +1,10 @@
 # Read Later Is Broken
 
-Read Later Is Broken is a Chrome extension for DeepReading: save pages to NotebookLM, listen when they matter, then ask better questions.
+Read Later Is Broken is a Chrome extension for DeepReading: save pages to Gemini Notebook, listen when they matter, then ask better questions.
 
 Read later is broken. Listen first. Ask later.
 
-This project is not affiliated with Google or NotebookLM.
+This project is not affiliated with Google or Gemini Notebook.
 
 Current version: `1.1.0`
 
@@ -14,24 +14,24 @@ Current version: `1.1.0`
 
 ## What It Does
 
-- Adds the current browser tab to selected NotebookLM notebooks.
+- Adds the current browser tab to selected Gemini Notebook notebooks.
 - Separates broad digest saving from focused theme saving.
 - Supports Daily, Weekly, and Monthly digest notebooks with fixed ISO-style names.
-- Lets you search existing NotebookLM notebooks and keep selected theme notebooks checked.
-- Lets you create a new NotebookLM notebook from the same search/title field.
-- Shows NotebookLM source counts for digest notebooks and saved theme notebooks.
-- Runs add jobs in the background, so the popup can be closed while NotebookLM processes the request.
-- Stores the last add result in the popup so persistent NotebookLM-side errors remain visible.
+- Lets you search existing Gemini Notebook notebooks and keep selected theme notebooks checked.
+- Lets you create a new Gemini Notebook notebook from the same search/title field.
+- Shows Gemini Notebook source counts for digest notebooks and saved theme notebooks.
+- Runs add jobs in the background, so the popup can be closed while Gemini Notebook processes the request.
+- Stores the last add result in the popup so persistent Gemini Notebook-side errors remain visible.
 - Uses Chrome UI language for the extension UI, with English and Japanese locale files.
 - Follows the browser light or dark color scheme.
 
-The extension adds pages as NotebookLM sources. It does not automatically generate Deep Dives or audio overviews.
+The extension adds pages as Gemini Notebook sources. It does not automatically generate Deep Dives or audio overviews.
 
 ## DeepReading Flow
 
 1. Save the current page to digest or theme notebooks.
-2. Open NotebookLM when the notebook is worth attention.
-3. Generate a Deep Dive or ask follow-up questions inside NotebookLM.
+2. Open Gemini Notebook when the notebook is worth attention.
+3. Generate a Deep Dive or ask follow-up questions inside Gemini Notebook.
 
 ## Development Setup
 
@@ -52,7 +52,7 @@ npm run dev
 
 - The extension targets one active browser tab at a time.
 - The popup fetches the current tab URL/title and sends that page to selected destinations.
-- If no saved destinations exist, the popup fetches the NotebookLM notebook list automatically.
+- If no saved destinations exist, the popup fetches the Gemini Notebook notebook list automatically.
 - The notebook list can be refreshed from the popup.
 - Digest mode targets only Daily / Weekly / Monthly notebooks.
 - Theme mode targets checked existing notebooks.
@@ -64,7 +64,7 @@ npm run dev
   - `Weekly yyyy-Www`
   - `Monthly yyyy-MM`
 - Date notebooks are reused when a same-name notebook exists, and created when missing.
-- Duplicate URLs are intentionally inserted again because NotebookLM allows duplicates and imports the current page state.
+- Duplicate URLs are intentionally inserted again because Gemini Notebook allows duplicates and imports the current page state.
 
 Out of scope for now:
 
@@ -78,9 +78,10 @@ Out of scope for now:
 The extension requests:
 
 - `activeTab`: read the current tab URL/title after the user opens the popup.
-- `scripting`: run bundled helper code in temporary NotebookLM tabs.
+- `scripting`: run bundled helper code in temporary Gemini Notebook tabs.
 - `storage`: store extension settings and the last add result in Chrome extension storage.
-- `https://notebooklm.google.com/*`: list, create, and add sources to NotebookLM notebooks.
+- `https://notebook.google.com/*`: list, create, and add sources to Gemini Notebook notebooks.
+- `https://notebooklm.google.com/*`: support previously saved NotebookLM URLs during the domain transition.
 
 See [Permission Justifications](https://x013318908.github.io/Read-Later-Is-Broken/permissions.html) for the public review-facing explanation.
 
@@ -108,13 +109,13 @@ Useful local files:
 - `public/_locales/*`: manifest and extension UI localization resources
 - `public/icons/*`: extension icons
 - `popup.html`, `src/popup/*`: popup UI
-- `src/background.ts`: service worker and NotebookLM job handling
+- `src/background.ts`: service worker and Gemini Notebook job handling
 - `src/shared/*`: shared types, storage, and i18n helpers
 - `src/styles/app.css`: popup styles
 
-## NotebookLM Limits To Keep In Mind
+## Gemini Notebook Limits To Keep In Mind
 
-NotebookLM limits depend on the user's plan. During development, Google AI Plus allowed up to 200 notebooks and up to 100 URL sources per notebook. When a limit is reached, add attempts can keep failing until notebooks or sources are removed in NotebookLM.
+Gemini Notebook limits depend on the user's plan. During development, Google AI Plus allowed up to 200 notebooks and up to 100 URL sources per notebook. When a limit is reached, add attempts can keep failing until notebooks or sources are removed in Gemini Notebook.
 
 The extension keeps the last result visible in the popup so these repeated failures are easier to notice.
 
@@ -134,5 +135,5 @@ This source code is released under CC0 1.0 Universal. See [LICENSE](./LICENSE).
 - Promoted the extension to the first stable release.
 - Added source count badges for digest notebooks and saved theme notebooks.
 - Improved saved notebook sorting: checked notebooks first, then name order, while keeping emoji searchable.
-- Improved NotebookLM communication handling so stalled list/add/create requests time out and the popup controls recover.
+- Improved Gemini Notebook communication handling so stalled list/add/create requests time out and the popup controls recover.
 - Disabled Enter submission in the shared search/new notebook name field because it is intentionally both a search field and a creation title field.
