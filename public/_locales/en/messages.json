@@ -102,13 +102,13 @@
     "message": "Select at least one digest destination."
   },
   "digestJobStarted": {
-    "message": "Started adding to digest notebooks. This will continue if you close the popup."
+    "message": "Queued the digest notebook add. You can continue using the popup; it will continue if you close it."
   },
   "selectThemeDestination": {
     "message": "Select at least one theme destination."
   },
   "themeJobStarted": {
-    "message": "Started adding to theme notebooks. This will continue if you close the popup."
+    "message": "Queued the theme notebook add. You can continue using the popup; it will continue if you close it."
   },
   "creatingNotebook": {
     "message": "Creating a Gemini Notebook notebook."

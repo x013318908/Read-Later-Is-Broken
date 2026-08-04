@@ -37,7 +37,6 @@ const state: {
 const sortLocale = getUiLanguage();
 const LIST_MESSAGE_TIMEOUT_MS = 60_000;
 const CREATE_MESSAGE_TIMEOUT_MS = 60_000;
-const ADD_JOB_MESSAGE_TIMEOUT_MS = 180_000;
 let notebookListSyncRunId = 0;
 
 const elements = {
@@ -257,7 +256,6 @@ async function handleDigestSubmit(): Promise<void> {
   }
 
   await runNotebookAddJob({
-    startMessage: t("digestJobStarted"),
     existingTargets: [],
     datePeriods: dateNotebookPeriods
   });
@@ -277,7 +275,6 @@ async function handleThemeSubmit(): Promise<void> {
   }
 
   await runNotebookAddJob({
-    startMessage: t("themeJobStarted"),
     existingTargets: destinations.map((destination) => ({
       destinationId: destination.id,
       name: destination.name,
@@ -351,44 +348,61 @@ async function handleCreateNotebook(): Promise<void> {
 }
 
 async function runNotebookAddJob(input: {
-  startMessage: string;
   existingTargets: Array<{ destinationId: string; name: string; notebookUrl: string }>;
   datePeriods: DateNotebookPeriod[];
 }): Promise<void> {
   try {
-    setSendButtonsDisabled(true);
     state.settings = await rememberSelectedDestinations(getSelectedDestinationIdsFromForm());
     state.settings = await rememberTargetSettingsFromForm();
-    showMessage(input.startMessage, "neutral");
-    const response = await sendMessageWithTimeout(
-      {
-        type: "runNotebookAddJob",
-        payload: {
-          source: state.currentPage,
-          existingTargets: input.existingTargets,
-          datePeriods: input.datePeriods
-        }
-      },
-      ADD_JOB_MESSAGE_TIMEOUT_MS
+    showMessage(
+      input.datePeriods.length > 0 ? t("digestJobStarted") : t("themeJobStarted"),
+      "neutral"
     );
+    sendNotebookAddJob({
+      type: "runNotebookAddJob",
+      payload: {
+        source: state.currentPage,
+        existingTargets: input.existingTargets,
+        datePeriods: input.datePeriods
+      }
+    });
+  } catch (error) {
+    showMessage(getErrorMessage(error), "danger");
+  }
+}
+
+function sendNotebookAddJob(message: unknown): void {
+  chrome.runtime.sendMessage(message, (response: unknown) => {
+    const error = chrome.runtime.lastError;
+
+    if (error) {
+      showMessage(error.message || t("unexpectedError"), "danger");
+      return;
+    }
 
     if (!isAddJobResponse(response)) {
-      throw new Error(t("notebookAddResultUnreadable"));
+      showMessage(t("notebookAddResultUnreadable"), "danger");
+      return;
     }
 
     if (!response.ok) {
-      throw new Error(response.error);
+      showMessage(response.error, "danger");
+      return;
     }
 
+    void finishNotebookAddJob(response.result.status);
+  });
+}
+
+async function finishNotebookAddJob(status: LastAddStatus): Promise<void> {
+  try {
     state.settings = await loadSettings();
     renderDestinations(state.settings);
-    renderLastAddStatus(response.result.status);
-    showMessage(response.result.status.message, getStatusMessageVariant(response.result.status));
+    renderLastAddStatus(status);
+    showMessage(status.message, getStatusMessageVariant(status));
     void refreshNotebookList({ auto: true, silent: true });
   } catch (error) {
     showMessage(getErrorMessage(error), "danger");
-  } finally {
-    setSendButtonsDisabled(false);
   }
 }
 

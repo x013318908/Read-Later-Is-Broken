@@ -32,12 +32,21 @@ import { rememberLastAddStatus, upsertDestination } from "./shared/storage";
 const MAX_PARALLEL_NOTEBOOK_ADDS = 3;
 const NOTEBOOKLM_AUTH_TIMEOUT_MS = 20_000;
 const NOTEBOOKLM_RPC_TIMEOUT_MS = 60_000;
+const notebookAddQueue: QueuedNotebookAddJob[] = [];
+let notebookAddQueueRunning = false;
+
+interface QueuedNotebookAddJob {
+  request: NotebookAddJobRequest;
+  sendResponse: (response?: unknown) => void;
+}
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (isNotebookAddJobMessage(message)) {
-    void handleNotebookAddJob(message.payload)
-      .then((result) => sendResponse({ ok: true, result }))
-      .catch((error: unknown) => sendResponse({ ok: false, error: getErrorMessage(error) }));
+    notebookAddQueue.push({
+      request: message.payload,
+      sendResponse
+    });
+    void drainNotebookAddQueue();
 
     return true;
   }
@@ -84,6 +93,33 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   return false;
 });
+
+async function drainNotebookAddQueue(): Promise<void> {
+  if (notebookAddQueueRunning) {
+    return;
+  }
+
+  notebookAddQueueRunning = true;
+
+  try {
+    while (notebookAddQueue.length > 0) {
+      const job = notebookAddQueue.shift();
+
+      if (!job) {
+        continue;
+      }
+
+      try {
+        const result = await handleNotebookAddJob(job.request);
+        job.sendResponse({ ok: true, result });
+      } catch (error) {
+        job.sendResponse({ ok: false, error: getErrorMessage(error) });
+      }
+    }
+  } finally {
+    notebookAddQueueRunning = false;
+  }
+}
 
 async function handleNotebookAddJob(request: NotebookAddJobRequest): Promise<NotebookAddJobResult> {
   const startedAt = new Date().toISOString();
@@ -631,13 +667,14 @@ function extractNotebookLmRpcPayload(responseText: string): string {
 
 async function addSourceToNotebookTargetSilently(target: NotebookDirectAddTarget, source: CurrentPage): Promise<void> {
   try {
-    await addSourceToNotebookTarget(
-      {
-        notebookUrl: target.notebookUrl,
-        source
-      },
-      { active: false, closeWhenDone: true }
-    );
+    const notebookTarget = getNotebookTarget(target.notebookUrl);
+
+    if (!notebookTarget) {
+      throw new Error(t("invalidNotebookUrl"));
+    }
+
+    const authParams = await loadNotebookLmAuthParams(notebookTarget.authuser);
+    await addNotebookLmSources(authParams, notebookTarget.notebookId, [source.url]);
   } catch (error) {
     console.warn(
       `Read Later Is Broken: Gemini Notebook add request did not return a stable result for ${target.name}.`,

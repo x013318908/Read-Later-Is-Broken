@@ -102,13 +102,13 @@
     "message": "ダイジェストの追加先を1つ以上選択してください。"
   },
   "digestJobStarted": {
-    "message": "ダイジェスト用ノートブックへの追加を開始しました。popupを閉じても続行します。"
+    "message": "ダイジェスト用ノートブックへの追加をキューに入れました。続けて操作できます。popupを閉じても続行します。"
   },
   "selectThemeDestination": {
     "message": "テーマ別の追加先を1つ以上選択してください。"
   },
   "themeJobStarted": {
-    "message": "テーマ別ノートブックへの追加を開始しました。popupを閉じても続行します。"
+    "message": "テーマ別ノートブックへの追加をキューに入れました。続けて操作できます。popupを閉じても続行します。"
   },
   "creatingNotebook": {
     "message": "Gemini Notebookにノートブックを作成しています。"
