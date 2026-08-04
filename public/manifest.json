@@ -24,7 +24,6 @@
   },
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [
-    "https://notebook.google.com/*",
-    "https://notebooklm.google.com/*"
+    "https://notebook.google.com/*"
   ]
 }

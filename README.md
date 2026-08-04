@@ -82,7 +82,6 @@ The extension requests:
 - `scripting`: run bundled helper code in temporary Gemini Notebook tabs.
 - `storage`: store extension settings and the last add result in Chrome extension storage.
 - `https://notebook.google.com/*`: list, create, and add sources to Gemini Notebook notebooks.
-- `https://notebooklm.google.com/*`: support previously saved NotebookLM URLs during the domain transition.
 
 See [Permission Justifications](https://x013318908.github.io/Read-Later-Is-Broken/permissions.html) for the public review-facing explanation.
 
