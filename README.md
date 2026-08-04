@@ -6,7 +6,7 @@ Read later is broken. Listen first. Ask later.
 
 This project is not affiliated with Google or Gemini Notebook.
 
-Current version: `1.1.1`
+Current version: `1.1.2`
 
 ## Install
 
@@ -101,7 +101,7 @@ Useful local files:
 - `docs/permissions.html`: Chrome Web Store permission explanations
 - `docs/assets/screenshots/`: screenshots for Pages and store materials
 - `docs/assets/promotion_image/`: promotional images
-- `docs/release-notes-v1.1.1.md`: Chrome Web Store release note copy
+- `docs/release-notes-v1.1.2.md`: Chrome Web Store release note copy
 - `docs/roadmap.md`: project notes and deferred ideas
 
 ## Project Files
@@ -125,6 +125,13 @@ The extension keeps the last result visible in the popup so these repeated failu
 This source code is released under CC0 1.0 Universal. See [LICENSE](./LICENSE).
 
 ## Release Notes
+
+### 1.1.2
+
+- Added compact direct links beside theme notebooks so each notebook can be opened in a new tab.
+- Queued digest and theme add actions in order, keeping the popup controls usable while jobs run in the background.
+- Processed theme notebook additions through the background RPC path without opening visible helper tabs.
+- Removed the obsolete `notebooklm.google.com` host permission and updated the release screenshots.
 
 ### 1.1.1
 
