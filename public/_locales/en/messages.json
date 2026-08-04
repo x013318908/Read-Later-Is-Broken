@@ -37,6 +37,14 @@
   "create": {
     "message": "Create"
   },
+  "openNotebook": {
+    "message": "Open notebook \"$NAME$\"",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
   "digestNotebookListLabel": {
     "message": "Digest Gemini Notebook notebooks"
   },

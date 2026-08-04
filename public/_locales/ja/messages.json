@@ -37,6 +37,14 @@
   "create": {
     "message": "作成"
   },
+  "openNotebook": {
+    "message": "ノートブック「$NAME$」を開く",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
   "digestNotebookListLabel": {
     "message": "ダイジェスト用Gemini Notebookノートブック"
   },

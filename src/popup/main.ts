@@ -439,11 +439,13 @@ function renderDestinations(settings: AppSettings): void {
   }
 
   for (const destination of visibleDestinations) {
-    const label = document.createElement("label");
-    label.className = "destination-check-row";
+    const row = document.createElement("div");
+    row.className = "destination-check-row theme-destination-row";
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
+    const checkboxId = `destination-checkbox-${destination.id}`;
+    checkbox.id = checkboxId;
     checkbox.value = destination.id;
     checkbox.checked = selectedIds.has(destination.id);
     checkbox.addEventListener("change", () => {
@@ -451,7 +453,9 @@ function renderDestinations(settings: AppSettings): void {
       updateSendButtonLabel();
     });
 
-    const text = document.createElement("span");
+    const label = document.createElement("label");
+    label.className = "destination-label";
+    label.htmlFor = checkboxId;
 
     const name = document.createElement("strong");
     name.textContent = destination.name;
@@ -466,9 +470,20 @@ function renderDestinations(settings: AppSettings): void {
       nameLine.append(sourceCount);
     }
 
-    text.append(nameLine);
-    label.append(checkbox, text);
-    elements.destinationList.append(label);
+    label.append(nameLine);
+
+    const openLink = document.createElement("a");
+    openLink.className = "destination-open-link";
+    openLink.href = destination.notebookUrl;
+    openLink.target = "_blank";
+    openLink.rel = "noopener noreferrer";
+    openLink.textContent = "↗";
+    const openLabel = t("openNotebook", [destination.name]);
+    openLink.title = openLabel;
+    openLink.setAttribute("aria-label", openLabel);
+
+    row.append(checkbox, label, openLink);
+    elements.destinationList.append(row);
   }
 
   updateSendButtonLabel();

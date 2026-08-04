@@ -20,6 +20,7 @@ Current version: `1.1.1`
 - Lets you search existing Gemini Notebook notebooks and keep selected theme notebooks checked.
 - Lets you create a new Gemini Notebook notebook from the same search/title field.
 - Shows Gemini Notebook source counts for digest notebooks and saved theme notebooks.
+- Provides a compact link beside each theme notebook to open it directly in a new tab.
 - Runs add jobs in the background, so the popup can be closed while Gemini Notebook processes the request.
 - Stores the last add result in the popup so persistent Gemini Notebook-side errors remain visible.
 - Uses Chrome UI language for the extension UI, with English and Japanese locale files.
