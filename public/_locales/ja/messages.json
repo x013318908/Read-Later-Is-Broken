@@ -11,6 +11,38 @@
   "theme": {
     "message": "テーマ別"
   },
+  "newNotebook": {
+    "message": "新規ノートブック"
+  },
+  "createAndAddPage": {
+    "message": "作成して、このページを追加"
+  },
+  "createNamedNotebook": {
+    "message": "入力した名前でノートブックを作成"
+  },
+  "openCreatedNotebook": {
+    "message": "ノートブックを開く"
+  },
+  "retryPageAdd": {
+    "message": "追加を再試行"
+  },
+  "newNotebookCreating": {
+    "message": "新しいノートブックを作成しています。"
+  },
+  "newNotebookAdding": {
+    "message": "作成したノートブックにページを追加しています。"
+  },
+  "newNotebookAddComplete": {
+    "message": "新しいノートブックにページを追加しました。"
+  },
+  "newNotebookCreateFailed": {
+    "message": "ノートブックを作成できませんでした。$ERROR$",
+    "placeholders": { "error": { "content": "$1" } }
+  },
+  "newNotebookCreatedAddFailed": {
+    "message": "ノートブックは作成済みですが、ページ追加に失敗しました。$ERROR$",
+    "placeholders": { "error": { "content": "$1" } }
+  },
   "addToNotebookLm": {
     "message": "Gemini Notebook に追加"
   },
@@ -21,6 +53,47 @@
         "content": "$1"
       }
     }
+  },
+  "buttonAdding": {
+    "message": "追加中..."
+  },
+  "buttonAddingWithCount": {
+    "message": "追加中 ($COUNT$)...",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "buttonAdded": {
+    "message": "追加しました"
+  },
+  "buttonAddPartial": {
+    "message": "一部追加に失敗"
+  },
+  "buttonAddFailed": {
+    "message": "追加に失敗"
+  },
+  "buttonSelectDestination": {
+    "message": "保存先を選択してください"
+  },
+  "buttonRefreshing": {
+    "message": "更新中..."
+  },
+  "buttonRefreshed": {
+    "message": "更新しました"
+  },
+  "buttonRefreshFailed": {
+    "message": "更新に失敗"
+  },
+  "buttonCreating": {
+    "message": "作成中..."
+  },
+  "buttonCreated": {
+    "message": "作成済み"
+  },
+  "buttonCreateFailed": {
+    "message": "作成に失敗"
   },
   "destinations": {
     "message": "保存先"

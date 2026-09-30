@@ -1,8 +1,9 @@
-import type { AddJobStatusItem, AppSettings, CurrentPage, Destination, LastAddStatus } from "./types";
+import type { AddJobStatusItem, AppSettings, CurrentPage, Destination, LastAddStatus, NewNotebookAddStatus } from "./types";
 import { canonicalizeNotebookUrl } from "./geminiNotebook";
 
 const STORAGE_KEY = "settings";
-type DestinationInput = Pick<Destination, "name" | "notebookUrl"> & Partial<Pick<Destination, "sourceCount">>;
+export const NEW_NOTEBOOK_ADD_STATUS_KEY = "newNotebookAddStatus";
+type DestinationInput = Pick<Destination, "name" | "notebookUrl"> & Partial<Pick<Destination, "sourceCount" | "notebookUpdatedAtMs">>;
 
 const DEFAULT_SETTINGS: AppSettings = {
   destinations: [],
@@ -12,8 +13,10 @@ const DEFAULT_SETTINGS: AppSettings = {
   monthlyDestinationEnabled: false
 };
 
-export function loadSettings(): Promise<AppSettings> {
-  return loadSettingsFromStorage();
+export async function loadSettings(): Promise<AppSettings> {
+  const settings = await loadSettingsFromStorage();
+  const status = await getStorageValue(chrome.storage.local, NEW_NOTEBOOK_ADD_STATUS_KEY);
+  return isNewNotebookAddStatus(status) ? { ...settings, lastNewNotebookAddStatus: status } : settings;
 }
 
 export function saveSettings(settings: AppSettings): Promise<void> {
@@ -38,6 +41,7 @@ export async function upsertDestination(input: DestinationInput): Promise<AppSet
               ...destination,
               name: normalizedInput.name,
               ...(normalizedInput.sourceCount === undefined ? {} : { sourceCount: normalizedInput.sourceCount }),
+              ...(isTimestamp(normalizedInput.notebookUpdatedAtMs) ? { notebookUpdatedAtMs: normalizedInput.notebookUpdatedAtMs } : {}),
               updatedAt:
                 destination.name === normalizedInput.name &&
                 (normalizedInput.sourceCount === undefined ||
@@ -54,6 +58,7 @@ export async function upsertDestination(input: DestinationInput): Promise<AppSet
           name: normalizedInput.name,
           notebookUrl: normalizedInput.notebookUrl,
           ...(normalizedInput.sourceCount === undefined ? {} : { sourceCount: normalizedInput.sourceCount }),
+          ...(isTimestamp(normalizedInput.notebookUpdatedAtMs) ? { notebookUpdatedAtMs: normalizedInput.notebookUpdatedAtMs } : {}),
           createdAt: now,
           updatedAt: now
         }
@@ -123,11 +128,13 @@ export async function replaceDestinations(inputs: DestinationInput[]): Promise<A
 
 function buildUpdatedDestination(existing: Destination, input: DestinationInput, now: string): Destination {
   const sourceCount = input.sourceCount ?? existing.sourceCount;
+  const notebookUpdatedAtMs = isTimestamp(input.notebookUpdatedAtMs) ? input.notebookUpdatedAtMs : existing.notebookUpdatedAtMs;
 
   return {
     ...existing,
     name: input.name,
     ...(sourceCount === undefined ? {} : { sourceCount }),
+    ...(notebookUpdatedAtMs === undefined ? {} : { notebookUpdatedAtMs }),
     updatedAt: existing.name === input.name && existing.sourceCount === sourceCount ? existing.updatedAt : now
   };
 }
@@ -138,6 +145,7 @@ function buildNewDestination(input: DestinationInput, now: string): Destination 
     name: input.name,
     notebookUrl: input.notebookUrl,
     ...(input.sourceCount === undefined ? {} : { sourceCount: input.sourceCount }),
+    ...(isTimestamp(input.notebookUpdatedAtMs) ? { notebookUpdatedAtMs: input.notebookUpdatedAtMs } : {}),
     createdAt: now,
     updatedAt: now
   };
@@ -182,6 +190,25 @@ export async function rememberLastAddStatus(lastAddStatus: LastAddStatus): Promi
   return nextSettings;
 }
 
+export async function rememberNewNotebookAddStatus(lastNewNotebookAddStatus: NewNotebookAddStatus): Promise<void> {
+  // Keep job progress independent of stale popup settings and list refreshes.
+  await setStorageValue(chrome.storage.local, lastNewNotebookAddStatus, NEW_NOTEBOOK_ADD_STATUS_KEY);
+}
+
+export function isNewNotebookAddStatus(value: unknown): value is NewNotebookAddStatus {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    (value.state === "running" || value.state === "success" || value.state === "failure") &&
+    (value.phase === "creating" || value.phase === "adding" || value.phase === "complete") &&
+    isCurrentPage(value.source) &&
+    (value.notebookUrl === undefined || typeof value.notebookUrl === "string") &&
+    typeof value.startedAt === "string" &&
+    typeof value.checkedAt === "string" &&
+    typeof value.message === "string"
+  );
+}
+
 function normalizeSettings(value: unknown): AppSettings {
   if (!isRecord(value)) {
     return DEFAULT_SETTINGS;
@@ -196,6 +223,9 @@ function normalizeSettings(value: unknown): AppSettings {
       ...destination,
       notebookUrl: canonicalizeNotebookUrl(destination.notebookUrl)
     };
+    if (!isTimestamp(normalizedDestination.notebookUpdatedAtMs)) {
+      delete normalizedDestination.notebookUpdatedAtMs;
+    }
     const existing = destinationsByUrl.get(normalizedDestination.notebookUrl);
 
     if (existing) {
@@ -241,9 +271,9 @@ async function loadSettingsFromStorage(): Promise<AppSettings> {
   return settings;
 }
 
-function getStorageValue(area: chrome.storage.StorageArea): Promise<unknown | undefined> {
+function getStorageValue(area: chrome.storage.StorageArea, key = STORAGE_KEY): Promise<unknown | undefined> {
   return new Promise((resolve, reject) => {
-    area.get(STORAGE_KEY, (items) => {
+    area.get(key, (items) => {
       const error = chrome.runtime.lastError;
 
       if (error) {
@@ -251,14 +281,14 @@ function getStorageValue(area: chrome.storage.StorageArea): Promise<unknown | un
         return;
       }
 
-      resolve(items[STORAGE_KEY]);
+      resolve(items[key]);
     });
   });
 }
 
-function setStorageValue(area: chrome.storage.StorageArea, settings: AppSettings): Promise<void> {
+function setStorageValue(area: chrome.storage.StorageArea, value: unknown, key = STORAGE_KEY): Promise<void> {
   return new Promise((resolve, reject) => {
-    area.set({ [STORAGE_KEY]: settings }, () => {
+    area.set({ [key]: value }, () => {
       const error = chrome.runtime.lastError;
 
       if (error) {
@@ -285,6 +315,10 @@ function isDestination(value: unknown): value is Destination {
 
 function isNonNegativeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+function isTimestamp(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
 function isLastAddStatus(value: unknown): value is LastAddStatus {

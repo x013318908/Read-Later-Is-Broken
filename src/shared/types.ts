@@ -3,6 +3,7 @@ export interface Destination {
   name: string;
   notebookUrl: string;
   sourceCount?: number;
+  notebookUpdatedAtMs?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -14,6 +15,7 @@ export interface AppSettings {
   weeklyDestinationEnabled: boolean;
   monthlyDestinationEnabled: boolean;
   lastAddStatus?: LastAddStatus;
+  lastNewNotebookAddStatus?: NewNotebookAddStatus;
 }
 
 export interface CurrentPage {
@@ -51,6 +53,26 @@ export interface NotebookAddJobRequest {
 
 export interface NotebookAddJobResult {
   status: LastAddStatus;
+}
+
+export interface NewNotebookAddRequest {
+  source: CurrentPage;
+  notebookUrl?: string;
+}
+
+export interface NewNotebookAddStatus {
+  id: string;
+  state: "running" | "success" | "failure";
+  phase: "creating" | "adding" | "complete";
+  source: CurrentPage;
+  notebookUrl?: string;
+  startedAt: string;
+  checkedAt: string;
+  message: string;
+}
+
+export interface NewNotebookAddResult {
+  status: NewNotebookAddStatus;
 }
 
 export interface NotebookDirectAddRequest {

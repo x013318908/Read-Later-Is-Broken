@@ -33,6 +33,12 @@ export function applyDocumentI18n(root: ParentNode = document): void {
       element.setAttribute("aria-label", t(messageName));
     }
   });
+
+  root.querySelectorAll<HTMLElement>("[data-i18n-title]").forEach((element) => {
+    if (element.dataset.i18nTitle) {
+      element.title = t(element.dataset.i18nTitle);
+    }
+  });
 }
 
 function isPlaceholderElement(element: HTMLElement): element is HTMLInputElement | HTMLTextAreaElement {

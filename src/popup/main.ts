@@ -8,6 +8,14 @@ import {
   upsertDestination
 } from "../shared/storage";
 import { applyDocumentI18n, getUiLanguage, t } from "../shared/i18n";
+import {
+  resetButtonFeedback,
+  setButtonLabel,
+  showButtonFeedback,
+  startButtonFeedback,
+  type ButtonFeedbackResult
+} from "./buttonFeedback";
+import { initializeNewNotebookControls } from "./newNotebook";
 import type {
   AppSettings,
   CurrentPage,
@@ -38,6 +46,9 @@ const sortLocale = getUiLanguage();
 const LIST_MESSAGE_TIMEOUT_MS = 60_000;
 const CREATE_MESSAGE_TIMEOUT_MS = 60_000;
 let notebookListSyncRunId = 0;
+let foregroundNotebookListRefreshCount = 0;
+let namedNotebookCreationRunning = false;
+let newNotebookControls: ReturnType<typeof initializeNewNotebookControls> | undefined;
 
 const elements = {
   digestForm: getElement<HTMLFormElement>("digest-form"),
@@ -71,6 +82,21 @@ async function initialize(): Promise<void> {
   document.documentElement.lang = sortLocale;
   applyDocumentI18n();
   renderDateNotebookTitles(state.settings);
+  newNotebookControls = initializeNewNotebookControls({
+    getCurrentPage: () => state.currentPage,
+    getNotebookName: (notebookUrl) => state.settings.destinations.find((destination) => destination.notebookUrl === notebookUrl)?.name,
+    onComplete: async (status) => {
+      state.settings = await saveSortedDestinationOrder(await loadSettings());
+      renderDestinations(state.settings);
+      void refreshNotebookList({
+        auto: true,
+        silent: true,
+        preserveDestinations: state.settings.destinations.filter((destination) => destination.notebookUrl === status.notebookUrl)
+      });
+    }
+  });
+  void initializeCurrentPage();
+  updateNotebookManagementButtons();
 
   elements.digestForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -96,6 +122,8 @@ async function initialize(): Promise<void> {
 
   elements.destinationSearch.addEventListener("input", () => {
     state.searchQuery = elements.destinationSearch.value;
+    updateNotebookManagementButtons();
+    resetButtonFeedback(elements.createNotebookButton);
     renderDestinations(state.settings);
   });
   elements.destinationSearch.addEventListener("keydown", (event) => {
@@ -114,6 +142,7 @@ async function initialize(): Promise<void> {
       void rememberTargetSettingsFromForm().then((settings) => {
         renderDateNotebookTitles(settings);
       });
+      resetButtonFeedback(elements.sendButton);
       updateSendButtonLabel();
     });
   });
@@ -123,19 +152,26 @@ async function initialize(): Promise<void> {
     state.settings = await saveSortedDestinationOrder(settings);
     renderDestinations(state.settings);
     renderLastAddStatus(state.settings.lastAddStatus);
+    newNotebookControls.restoreStatus(state.settings.lastNewNotebookAddStatus);
 
+    const preserveDestinations = state.settings.destinations.filter(
+      (destination) => destination.notebookUrl === state.settings.lastNewNotebookAddStatus?.notebookUrl
+    );
     if (state.settings.destinations.length === 0) {
-      await refreshNotebookList({ auto: true, sortDestinations: true });
+      await refreshNotebookList({ auto: true, sortDestinations: true, preserveDestinations });
     } else {
-      void refreshNotebookList({ auto: true, silent: true });
+      void refreshNotebookList({ auto: true, silent: true, preserveDestinations });
     }
   } catch (error) {
     showMessage(getErrorMessage(error), "danger");
   }
+}
 
+async function initializeCurrentPage(): Promise<void> {
   try {
     const currentPage = await getCurrentPage();
     state.currentPage = currentPage;
+    newNotebookControls?.updateAvailability();
   } catch (error) {
     showMessage(t("currentPageUnavailable", [getErrorMessage(error)]), "danger");
     setSendButtonsDisabled(true);
@@ -151,9 +187,14 @@ async function refreshNotebookList(options: {
   completeMessage?: string;
 } = {}): Promise<void> {
   const syncRunId = ++notebookListSyncRunId;
+  const finishFeedback = options.silent
+    ? undefined
+    : startButtonFeedback(elements.refreshNotebooksButton, t("buttonRefreshing"));
+  let feedbackResult: ButtonFeedbackResult = { variant: "danger", label: t("buttonRefreshFailed") };
 
   if (!options.silent) {
-    elements.refreshNotebooksButton.disabled = true;
+    foregroundNotebookListRefreshCount += 1;
+    updateNotebookManagementButtons();
   }
 
   if (!options.silent) {
@@ -168,9 +209,11 @@ async function refreshNotebookList(options: {
 
   try {
     const result = await syncNotebookList({
+      syncRunId,
       preserveDestinations: options.preserveDestinations ?? [],
-      sortDestinations: options.sortDestinations ?? options.silent !== true
+      sortDestinations: options.sortDestinations ?? true
     });
+    feedbackResult = { variant: "success", label: t("buttonRefreshed") };
 
     if (syncRunId !== notebookListSyncRunId) {
       return;
@@ -188,19 +231,23 @@ async function refreshNotebookList(options: {
       showMessage(getErrorMessage(error), "danger");
     }
   } finally {
-    if (!options.silent && syncRunId === notebookListSyncRunId) {
-      elements.refreshNotebooksButton.disabled = false;
+    if (!options.silent) {
+      foregroundNotebookListRefreshCount -= 1;
+      updateNotebookManagementButtons();
+      finishFeedback?.(feedbackResult);
     }
   }
 }
 
 async function syncNotebookList(options: {
+  syncRunId?: number;
   preserveDestinations?: Destination[];
   sortDestinations?: boolean;
 } = {}): Promise<{
   settings: AppSettings;
   notebookCount: number;
 }> {
+  const syncRunId = options.syncRunId ?? ++notebookListSyncRunId;
   const response = await sendMessageWithTimeout(
     {
       type: "listNotebookLmNotebooks",
@@ -217,10 +264,16 @@ async function syncNotebookList(options: {
     throw new Error(response.error);
   }
 
+  // A newer refresh may include notebooks created while this request was in flight.
+  if (syncRunId !== notebookListSyncRunId) {
+    return { settings: await loadSettings(), notebookCount: response.result.notebooks.length };
+  }
+
   const notebookInputs = response.result.notebooks.map((notebook) => ({
     name: formatNotebookName(notebook),
     notebookUrl: notebook.notebookUrl,
-    sourceCount: notebook.sourceCount
+    sourceCount: notebook.sourceCount,
+    notebookUpdatedAtMs: notebook.updatedAtMs
   }));
   const notebookUrls = new Set(notebookInputs.map((notebook) => notebook.notebookUrl));
 
@@ -229,7 +282,8 @@ async function syncNotebookList(options: {
       notebookInputs.push({
         name: destination.name,
         notebookUrl: destination.notebookUrl,
-        sourceCount: destination.sourceCount
+        sourceCount: destination.sourceCount,
+        notebookUpdatedAtMs: destination.notebookUpdatedAtMs
       });
     }
   }
@@ -245,6 +299,7 @@ async function syncNotebookList(options: {
 async function handleDigestSubmit(): Promise<void> {
   if (!state.currentPage) {
     showMessage(t("currentPageNotReady"), "danger");
+    showButtonFeedback(elements.sendButton, { variant: "danger", label: t("buttonAddFailed") });
     return;
   }
 
@@ -252,6 +307,7 @@ async function handleDigestSubmit(): Promise<void> {
 
   if (dateNotebookPeriods.length === 0) {
     showMessage(t("selectDigestDestination"), "danger");
+    showButtonFeedback(elements.sendButton, { variant: "danger", label: t("buttonSelectDestination") });
     return;
   }
 
@@ -264,6 +320,7 @@ async function handleDigestSubmit(): Promise<void> {
 async function handleThemeSubmit(): Promise<void> {
   if (!state.currentPage) {
     showMessage(t("currentPageNotReady"), "danger");
+    showButtonFeedback(elements.themeSendButton, { variant: "danger", label: t("buttonAddFailed") });
     return;
   }
 
@@ -271,6 +328,7 @@ async function handleThemeSubmit(): Promise<void> {
 
   if (destinations.length === 0) {
     showMessage(t("selectThemeDestination"), "danger");
+    showButtonFeedback(elements.themeSendButton, { variant: "danger", label: t("buttonSelectDestination") });
     return;
   }
 
@@ -285,11 +343,16 @@ async function handleThemeSubmit(): Promise<void> {
 }
 
 async function handleCreateNotebook(): Promise<void> {
-  const title = elements.destinationSearch.value;
+  const title = elements.destinationSearch.value.trim();
+  if (!title || namedNotebookCreationRunning || foregroundNotebookListRefreshCount > 0) {
+    return;
+  }
   const selectedIds = getSelectedDestinationIdsFromForm();
+  const finishFeedback = startButtonFeedback(elements.createNotebookButton, t("buttonCreating"));
+  let feedbackResult: ButtonFeedbackResult = { variant: "danger", label: t("buttonCreateFailed") };
 
-  elements.createNotebookButton.disabled = true;
-  elements.refreshNotebooksButton.disabled = true;
+  namedNotebookCreationRunning = true;
+  updateNotebookManagementButtons();
   showMessage(t("creatingNotebook"), "neutral");
 
   try {
@@ -323,8 +386,10 @@ async function handleCreateNotebook(): Promise<void> {
     state.settings = createdDestination
       ? await rememberSelectedDestinations([...selectedIds, createdDestination.id])
       : optimisticSettings;
+    state.settings = await saveSortedDestinationOrder(state.settings);
     renderDestinations(state.settings);
     showMessage(t("notebookCreatedRefreshing"), "neutral");
+    feedbackResult = { variant: "success", label: t("buttonCreated") };
 
     if (createdDestination) {
       try {
@@ -337,13 +402,15 @@ async function handleCreateNotebook(): Promise<void> {
         showMessage(t("notebookCreated"), "success");
       } catch (error) {
         showMessage(t("notebookCreatedRefreshFailed", [getErrorMessage(error)]), "danger");
+        feedbackResult = { variant: "warning", label: t("buttonCreated") };
       }
     }
   } catch (error) {
     showMessage(getErrorMessage(error), "danger");
   } finally {
-    elements.createNotebookButton.disabled = false;
-    elements.refreshNotebooksButton.disabled = false;
+    namedNotebookCreationRunning = false;
+    updateNotebookManagementButtons();
+    finishFeedback(feedbackResult);
   }
 }
 
@@ -351,6 +418,12 @@ async function runNotebookAddJob(input: {
   existingTargets: Array<{ destinationId: string; name: string; notebookUrl: string }>;
   datePeriods: DateNotebookPeriod[];
 }): Promise<void> {
+  const button = input.datePeriods.length > 0 ? elements.sendButton : elements.themeSendButton;
+  const finishFeedback = startButtonFeedback(button, (count) =>
+    count > 1 ? t("buttonAddingWithCount", [String(count)]) : t("buttonAdding")
+  );
+  let feedbackResult: ButtonFeedbackResult = { variant: "danger", label: t("buttonAddFailed") };
+
   try {
     state.settings = await rememberSelectedDestinations(getSelectedDestinationIdsFromForm());
     state.settings = await rememberTargetSettingsFromForm();
@@ -358,7 +431,7 @@ async function runNotebookAddJob(input: {
       input.datePeriods.length > 0 ? t("digestJobStarted") : t("themeJobStarted"),
       "neutral"
     );
-    sendNotebookAddJob({
+    const result = await sendNotebookAddJob({
       type: "runNotebookAddJob",
       payload: {
         source: state.currentPage,
@@ -366,31 +439,41 @@ async function runNotebookAddJob(input: {
         datePeriods: input.datePeriods
       }
     });
+    if (result.status.state === "success") {
+      feedbackResult = { variant: "success", label: t("buttonAdded") };
+    } else if (result.status.state === "partial") {
+      feedbackResult = { variant: "warning", label: t("buttonAddPartial") };
+    }
+    await finishNotebookAddJob(result.status);
   } catch (error) {
     showMessage(getErrorMessage(error), "danger");
+  } finally {
+    finishFeedback(feedbackResult);
   }
 }
 
-function sendNotebookAddJob(message: unknown): void {
-  chrome.runtime.sendMessage(message, (response: unknown) => {
-    const error = chrome.runtime.lastError;
+function sendNotebookAddJob(message: unknown): Promise<NotebookAddJobResult> {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(message, (response: unknown) => {
+      const error = chrome.runtime.lastError;
 
-    if (error) {
-      showMessage(error.message || t("unexpectedError"), "danger");
-      return;
-    }
+      if (error) {
+        reject(new Error(error.message || t("unexpectedError")));
+        return;
+      }
 
-    if (!isAddJobResponse(response)) {
-      showMessage(t("notebookAddResultUnreadable"), "danger");
-      return;
-    }
+      if (!isAddJobResponse(response)) {
+        reject(new Error(t("notebookAddResultUnreadable")));
+        return;
+      }
 
-    if (!response.ok) {
-      showMessage(response.error, "danger");
-      return;
-    }
+      if (!response.ok) {
+        reject(new Error(response.error));
+        return;
+      }
 
-    void finishNotebookAddJob(response.result.status);
+      resolve(response.result);
+    });
   });
 }
 
@@ -420,6 +503,7 @@ async function getCurrentPage(): Promise<CurrentPage> {
 }
 
 function renderDestinations(settings: AppSettings): void {
+  newNotebookControls?.updateNotebookLink();
   elements.destinationList.replaceChildren();
   elements.destinationCount.textContent = t("notebookCount", [String(settings.destinations.length)]);
   elements.dailyDestinationEnabled.checked = settings.dailyDestinationEnabled;
@@ -464,6 +548,7 @@ function renderDestinations(settings: AppSettings): void {
     checkbox.checked = selectedIds.has(destination.id);
     checkbox.addEventListener("change", () => {
       void rememberSelectionAndTargetSettingsFromForm();
+      resetButtonFeedback(elements.themeSendButton);
       updateSendButtonLabel();
     });
 
@@ -553,6 +638,11 @@ function sortDestinationsForDisplay(destinations: Destination[], selectedIds: Se
       return selectedComparison;
     }
 
+    const updatedComparison = getDestinationSortTimestamp(b) - getDestinationSortTimestamp(a);
+    if (updatedComparison !== 0) {
+      return updatedComparison;
+    }
+
     const nameComparison = getDestinationSortName(a.name).localeCompare(getDestinationSortName(b.name), sortLocale, {
       numeric: true,
       sensitivity: "base"
@@ -564,6 +654,11 @@ function sortDestinationsForDisplay(destinations: Destination[], selectedIds: Se
 
     return a.notebookUrl.localeCompare(b.notebookUrl);
   });
+}
+
+function getDestinationSortTimestamp(destination: Destination): number {
+  const timestamp = destination.notebookUpdatedAtMs ?? Date.parse(destination.createdAt);
+  return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
 function getDestinationSortName(name: string): string {
@@ -590,10 +685,14 @@ function getSelectedDestinations(): Destination[] {
 function updateSendButtonLabel(): void {
   const existingCount = getSelectedDestinationIdsFromForm().length;
   const dateNotebookCount = getEnabledDateNotebookPeriods().length;
-  elements.sendButton.textContent =
-    dateNotebookCount > 0 ? t("addToNotebookLmWithCount", [String(dateNotebookCount)]) : t("addToNotebookLm");
-  elements.themeSendButton.textContent =
-    existingCount > 0 ? t("addToNotebookLmWithCount", [String(existingCount)]) : t("addToNotebookLm");
+  setButtonLabel(
+    elements.sendButton,
+    dateNotebookCount > 0 ? t("addToNotebookLmWithCount", [String(dateNotebookCount)]) : t("addToNotebookLm")
+  );
+  setButtonLabel(
+    elements.themeSendButton,
+    existingCount > 0 ? t("addToNotebookLmWithCount", [String(existingCount)]) : t("addToNotebookLm")
+  );
 }
 
 function getSelectedDestinationIdsFromForm(): string[] {
@@ -616,6 +715,12 @@ async function rememberTargetSettingsFromForm(): Promise<AppSettings> {
   state.settings = nextSettings;
 
   return nextSettings;
+}
+
+function updateNotebookManagementButtons(): void {
+  const busy = namedNotebookCreationRunning || foregroundNotebookListRefreshCount > 0;
+  elements.refreshNotebooksButton.disabled = busy;
+  elements.createNotebookButton.disabled = busy || !elements.destinationSearch.value.trim();
 }
 
 function setSendButtonsDisabled(disabled: boolean): void {

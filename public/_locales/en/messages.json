@@ -11,6 +11,38 @@
   "theme": {
     "message": "Theme"
   },
+  "newNotebook": {
+    "message": "New notebook"
+  },
+  "createAndAddPage": {
+    "message": "Create and add this page"
+  },
+  "createNamedNotebook": {
+    "message": "Create a notebook with this name"
+  },
+  "openCreatedNotebook": {
+    "message": "Open notebook"
+  },
+  "retryPageAdd": {
+    "message": "Retry add"
+  },
+  "newNotebookCreating": {
+    "message": "Creating a new notebook."
+  },
+  "newNotebookAdding": {
+    "message": "Adding the page to the new notebook."
+  },
+  "newNotebookAddComplete": {
+    "message": "Added the page to a new notebook."
+  },
+  "newNotebookCreateFailed": {
+    "message": "Could not create the notebook. $ERROR$",
+    "placeholders": { "error": { "content": "$1" } }
+  },
+  "newNotebookCreatedAddFailed": {
+    "message": "The notebook was created, but adding the page failed. $ERROR$",
+    "placeholders": { "error": { "content": "$1" } }
+  },
   "addToNotebookLm": {
     "message": "Add to Gemini Notebook"
   },
@@ -22,6 +54,47 @@
       }
     }
   },
+  "buttonAdding": {
+    "message": "Adding..."
+  },
+  "buttonAddingWithCount": {
+    "message": "Adding... ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "buttonAdded": {
+    "message": "Added"
+  },
+  "buttonAddPartial": {
+    "message": "Partially added"
+  },
+  "buttonAddFailed": {
+    "message": "Add failed"
+  },
+  "buttonSelectDestination": {
+    "message": "Select destinations"
+  },
+  "buttonRefreshing": {
+    "message": "Refreshing..."
+  },
+  "buttonRefreshed": {
+    "message": "Updated"
+  },
+  "buttonRefreshFailed": {
+    "message": "Refresh failed"
+  },
+  "buttonCreating": {
+    "message": "Creating..."
+  },
+  "buttonCreated": {
+    "message": "Created"
+  },
+  "buttonCreateFailed": {
+    "message": "Failed"
+  },
   "destinations": {
     "message": "Destinations"
   },
@@ -32,7 +105,7 @@
     "message": "Notebook search and new notebook name"
   },
   "notebookSearchCreatePlaceholder": {
-    "message": "Search notebooks / new name"
+    "message": "Search / new name"
   },
   "create": {
     "message": "Create"

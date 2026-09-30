@@ -13,7 +13,7 @@
           <legend data-i18n="digest">Digest</legend>
 
           <div class="action-row">
-            <button id="send-button" type="submit" data-i18n="addToNotebookLm">Add to Gemini Notebook</button>
+            <button id="send-button" type="submit" aria-live="polite" aria-atomic="true" data-i18n="addToNotebookLm">Add to Gemini Notebook</button>
           </div>
 
           <details class="digest-destination-settings">
@@ -61,12 +61,30 @@
         </fieldset>
       </form>
 
+      <form id="new-notebook-form" class="send-form">
+        <fieldset class="target-group new-notebook-group">
+          <legend data-i18n="newNotebook">New notebook</legend>
+          <div class="action-row">
+            <button id="new-notebook-button" type="submit" disabled aria-live="polite" aria-atomic="true" data-i18n="createAndAddPage">
+              Create and add this page
+            </button>
+          </div>
+          <p id="new-notebook-status" class="message action-status" role="status" hidden></p>
+          <div id="new-notebook-actions" class="new-notebook-actions" hidden>
+            <a id="new-notebook-open-link" target="_blank" rel="noopener noreferrer" data-i18n="openCreatedNotebook">Open notebook</a>
+            <button id="new-notebook-retry-button" type="button" class="secondary-button small" aria-live="polite" aria-atomic="true" data-i18n="retryPageAdd" hidden>
+              Retry add
+            </button>
+          </div>
+        </fieldset>
+      </form>
+
       <form id="theme-form" class="send-form">
         <fieldset class="target-group theme-group">
           <legend data-i18n="theme">Theme</legend>
 
           <div class="destination-toolbar">
-            <button id="refresh-notebooks-button" type="button" class="secondary-button small" data-i18n="refreshNotebooks">
+            <button id="refresh-notebooks-button" type="button" class="secondary-button small" aria-live="polite" aria-atomic="true" data-i18n="refreshNotebooks">
               Refresh list
             </button>
           </div>
@@ -80,7 +98,7 @@
               data-i18n-aria-label="notebookSearchCreateLabel"
               data-i18n-placeholder="notebookSearchCreatePlaceholder"
             />
-            <button id="create-notebook-button" type="button" class="secondary-button small" data-i18n="create">
+            <button id="create-notebook-button" type="button" class="secondary-button small" disabled aria-live="polite" aria-atomic="true" data-i18n="create" data-i18n-title="createNamedNotebook">
               Create
             </button>
           </div>
@@ -94,7 +112,7 @@
           <div id="destination-count" class="destination-count" aria-live="polite">0 notebooks</div>
 
           <div class="action-row">
-            <button id="theme-send-button" type="submit" data-i18n="addToNotebookLm">Add to Gemini Notebook</button>
+            <button id="theme-send-button" type="submit" aria-live="polite" aria-atomic="true" data-i18n="addToNotebookLm">Add to Gemini Notebook</button>
           </div>
         </fieldset>
       </form>

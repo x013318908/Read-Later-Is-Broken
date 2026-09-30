@@ -3,6 +3,9 @@ import type {
   CurrentPage,
   DateNotebookPeriod,
   LastAddStatus,
+  NewNotebookAddRequest,
+  NewNotebookAddResult,
+  NewNotebookAddStatus,
   NotebookAddJobRequest,
   NotebookAddJobResult,
   NotebookDirectAddFailure,
@@ -27,7 +30,7 @@ import {
   GEMINI_NOTEBOOK_RPC_PATH,
   getNotebookTarget
 } from "./shared/geminiNotebook";
-import { rememberLastAddStatus, upsertDestination } from "./shared/storage";
+import { loadSettings, rememberLastAddStatus, rememberNewNotebookAddStatus, upsertDestination } from "./shared/storage";
 
 const MAX_PARALLEL_NOTEBOOK_ADDS = 3;
 const NOTEBOOKLM_AUTH_TIMEOUT_MS = 20_000;
@@ -41,6 +44,14 @@ interface QueuedNotebookAddJob {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (isNewNotebookAddMessage(message)) {
+    void handleNewNotebookAdd(message.payload)
+      .then((result) => sendResponse({ ok: true, result }))
+      .catch((error: unknown) => sendResponse({ ok: false, error: getErrorMessage(error) }));
+
+    return true;
+  }
+
   if (isNotebookAddJobMessage(message)) {
     notebookAddQueue.push({
       request: message.payload,
@@ -285,6 +296,72 @@ async function handleNotebookCreate(request: NotebookCreateRequest): Promise<Not
     message: t("createdNotebookBackground"),
     checkedAt
   };
+}
+
+async function handleNewNotebookAdd(request: NewNotebookAddRequest): Promise<NewNotebookAddResult> {
+  const retryTarget = request.notebookUrl ? getNotebookTarget(request.notebookUrl) : undefined;
+  if (request.notebookUrl && !retryTarget) {
+    throw new Error(t("invalidNotebookUrl"));
+  }
+
+  const startedAt = new Date().toISOString();
+  const status: NewNotebookAddStatus = {
+    id: crypto.randomUUID(),
+    state: "running",
+    phase: retryTarget ? "adding" : "creating",
+    source: request.source,
+    ...(retryTarget ? { notebookUrl: retryTarget.notebookUrl } : {}),
+    startedAt,
+    checkedAt: startedAt,
+    message: t(retryTarget ? "newNotebookAdding" : "newNotebookCreating")
+  };
+  const persistStatus = async (): Promise<void> => {
+    status.checkedAt = new Date().toISOString();
+    await rememberNewNotebookAddStatus({ ...status });
+  };
+  await persistStatus();
+
+  try {
+    const authParams = await loadNotebookLmAuthParams(retryTarget?.authuser);
+    let notebookId = retryTarget?.notebookId;
+    if (!notebookId) {
+      const [response] = await executeNotebookLmRpcs(authParams, [
+        { id: "CCqFvf", args: buildNotebookCreateArgs("") }
+      ]);
+      notebookId = parseNotebookCreateResponse(response);
+      status.notebookUrl = buildNotebookUrl(notebookId);
+    }
+
+    // Save the created destination before adding, so a retry never creates another notebook.
+    status.phase = "adding";
+    status.message = t("newNotebookAdding");
+    await persistStatus();
+    await addNotebookLmSources(authParams, notebookId, [request.source.url]);
+    status.state = "success";
+    status.phase = "complete";
+    status.message = t("newNotebookAddComplete");
+  } catch (error) {
+    status.state = "failure";
+    status.message = t(status.notebookUrl ? "newNotebookCreatedAddFailed" : "newNotebookCreateFailed", [
+      getErrorMessage(error)
+    ]);
+  }
+
+  if (status.notebookUrl) {
+    try {
+      const settings = await loadSettings();
+      const knownDestination = settings.destinations.find((destination) => destination.notebookUrl === status.notebookUrl);
+      await upsertDestination({
+        name: knownDestination?.name ?? t("newNotebookFallbackName"),
+        notebookUrl: status.notebookUrl,
+        ...(status.state === "success" ? { sourceCount: Math.max(knownDestination?.sourceCount ?? 0, 1) } : {})
+      });
+    } catch (error) {
+      console.warn("Read Later Is Broken: new notebook cache update failed.", getErrorMessage(error));
+    }
+  }
+  await persistStatus();
+  return { status };
 }
 
 async function handleNotebookDateAdd(request: NotebookDateAddRequest): Promise<NotebookDateAddResult> {
@@ -1128,6 +1205,19 @@ function waitForTabComplete(tabId: number): Promise<void> {
       }
     });
   });
+}
+
+function isNewNotebookAddMessage(value: unknown): value is {
+  type: "createNotebookAndAddSource";
+  payload: NewNotebookAddRequest;
+} {
+  return (
+    isRecord(value) &&
+    value.type === "createNotebookAndAddSource" &&
+    isRecord(value.payload) &&
+    isCurrentPage(value.payload.source) &&
+    (value.payload.notebookUrl === undefined || typeof value.payload.notebookUrl === "string")
+  );
 }
 
 function isNotebookAddJobMessage(value: unknown): value is {

@@ -6,7 +6,7 @@ Read later is broken. Listen first. Ask later.
 
 This project is not affiliated with Google or Gemini Notebook.
 
-Current version: `1.1.2`
+Current version: `1.1.3`
 
 ## Install
 
@@ -16,12 +16,15 @@ Current version: `1.1.2`
 
 - Adds the current browser tab to selected Gemini Notebook notebooks.
 - Separates broad digest saving from focused theme saving.
+- Creates an unnamed notebook and adds the current page in one action, independently of the theme list.
 - Supports Daily, Weekly, and Monthly digest notebooks with fixed ISO-style names.
 - Lets you search existing Gemini Notebook notebooks and keep selected theme notebooks checked.
 - Lets you create a new Gemini Notebook notebook from the same search/title field.
+- Preserves created notebooks after an add failure and lets you retry just the page addition, even after reopening the popup.
 - Shows Gemini Notebook source counts for digest notebooks and saved theme notebooks.
 - Provides a compact link beside each theme notebook to open it directly in a new tab.
-- Queues multiple add actions and processes them in order without blocking the popup controls.
+- Queues multiple digest and theme add actions and processes them in order without blocking the popup controls.
+- Shows progress, pending add counts, and success or failure directly on action buttons.
 - Runs add jobs in the background, so the popup can be closed while Gemini Notebook processes the request.
 - Stores the last add result in the popup so persistent Gemini Notebook-side errors remain visible.
 - Uses Chrome UI language for the extension UI, with English and Japanese locale files.
@@ -44,6 +47,8 @@ npm run build
 
 Open `chrome://extensions`, enable Developer mode, and load the generated `dist` folder as an unpacked extension.
 
+For Chrome Web Store releases, build first and zip the contents of `dist`, with `manifest.json` at the root of the ZIP. The `public` folder contains static build inputs, not the complete extension.
+
 For development builds:
 
 ```powershell
@@ -57,9 +62,11 @@ npm run dev
 - If no saved destinations exist, the popup fetches the Gemini Notebook notebook list automatically.
 - The notebook list can be refreshed from the popup.
 - Digest mode targets only Daily / Weekly / Monthly notebooks.
+- New notebook mode creates a notebook with an empty title and adds one page; Gemini Notebook handles automatic naming.
+- Notebooks created with the one-action button appear in the theme list without changing the checked destinations.
 - Theme mode targets checked existing notebooks.
 - Checked notebooks remain visible even when the search query would otherwise filter them out.
-- Saved notebooks are sorted with checked notebooks first, then by notebook name. Leading emoji are ignored for sorting but still searchable.
+- Saved notebooks are sorted with checked notebooks first, then by Gemini Notebook's latest update time within each group. Newly created notebooks use their creation time until notebook metadata is available; ties fall back to name order.
 - Source counts are displayed as compact badges when available.
 - Daily / Weekly / Monthly notebooks use local dates and these names:
   - `Daily yyyy-MM-dd`
@@ -101,7 +108,7 @@ Useful local files:
 - `docs/permissions.html`: Chrome Web Store permission explanations
 - `docs/assets/screenshots/`: screenshots for Pages and store materials
 - `docs/assets/promotion_image/`: promotional images
-- `docs/release-notes-v1.1.2.md`: Chrome Web Store release note copy
+- `docs/release-notes-v1.1.3.md`: Chrome Web Store release note copy
 - `docs/roadmap.md`: project notes and deferred ideas
 
 ## Project Files
@@ -125,6 +132,15 @@ The extension keeps the last result visible in the popup so these repeated failu
 This source code is released under CC0 1.0 Universal. See [LICENSE](./LICENSE).
 
 ## Release Notes
+
+### 1.1.3
+
+- Added one-action notebook creation and current-page saving without name input or notebook selection, while preserving existing theme selections.
+- Added progress indicators and success or failure feedback directly on action buttons.
+- Added page-only retry after notebook creation succeeds but source addition fails, including after reopening the popup.
+- Show the newly created notebook's name in its open link once available, keeping the generic label until then.
+- Sort theme notebooks with checked notebooks first, then by latest update time within each group, without reordering immediately during search or checkbox changes.
+- Updated the English and Japanese release screenshots in both light and dark modes.
 
 ### 1.1.2
 
